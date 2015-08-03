@@ -33,7 +33,7 @@
  * h<UserWidgetProps>('user-widget', { ... });
  */
 
-declare module "@cycle/web" {
+declare module "@cycle/dom" {
 	export interface VTree {}
 	
 	export interface DOMDriverIn {
