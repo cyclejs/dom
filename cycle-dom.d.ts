@@ -37,10 +37,12 @@ declare module "@cycle/dom" {
 	export interface VTree {}
 	
 	export interface DOMDriverIn {
-		DOM: {
-			get: (selector: string, eventName: string) => Rx.Observable<CustomEvent>
-			dispose: () => void
-		}
+		DOM: DOMApi
+	}
+	
+	export interface DOMApi {
+		get: (selector: string, eventName: string) => Rx.Observable<CustomEvent>
+		dispose: () => void
 	}
 	
 	export interface DOMDriverOut {
