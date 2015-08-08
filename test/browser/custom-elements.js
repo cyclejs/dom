@@ -2,9 +2,9 @@
 /* global describe, it, beforeEach */
 let assert = require('assert');
 let Cycle = require('@cycle/core');
-let CycleWeb = require('../../src/cycle-web');
+let CycleDOM = require('../../src/cycle-dom');
 let {Rx} = Cycle;
-let {h, makeDOMDriver} = CycleWeb;
+let {h, makeDOMDriver} = CycleDOM;
 
 function createRenderTarget() {
   let element = document.createElement('div');
@@ -320,6 +320,121 @@ describe('Custom Elements', function () {
     });
   });
 
+  it('should not render unwanted empty ids in elements', function (done) {
+    function myElementDef() {
+      return {
+        DOM: Rx.Observable.just(h('h3.myelementclass', 'Hello world'))
+      };
+    }
+    // Use the custom element
+    function app() {
+      return {
+        DOM: Rx.Observable.just(h('div.toplevel', [h('my-element', {key: 1})]))
+      };
+    }
+    let [requests, responses] = Cycle.run(app, {
+      DOM: makeDOMDriver(createRenderTarget(), {
+        'my-element': myElementDef
+      })
+    });
+    // Make assertions
+    responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+      assert.notStrictEqual(root, null);
+      assert.notStrictEqual(typeof root, 'undefined');
+      assert.strictEqual(root.innerHTML,
+        '<div class="toplevel">' +
+          '<h3 class="myelementclass cycleCustomElement-MY-ELEMENT">' +
+            'Hello world' +
+          '</h3>'+
+        '</div>'
+      );
+      responses.dispose();
+      done();
+    });
+  });
+
+  it('should not render unwanted leading spaces in className', function (done) {
+    function myElementDef() {
+      return {
+        DOM: Rx.Observable.just(
+          h('button', [
+            h('p', "Some content")
+          ])
+        )
+      };
+    }
+    function main(responses) {
+      return {
+        DOM: responses.DOM.get('.target', 'click')
+          .startWith(0)
+          .scan(-1, (x,y) => x+1)
+          .map(number =>
+            h('div', [
+              h('p', `Counter: ${number}`),
+              h('my-element.target')
+            ])
+          )
+      };
+    }
+    let [requests, responses] = Cycle.run(main, {
+      DOM: makeDOMDriver(createRenderTarget(), {
+        'my-element': myElementDef
+      })
+    });
+    // Make assertions
+    responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+      assert.notStrictEqual(root, null);
+      assert.notStrictEqual(typeof root, 'undefined');
+      assert.strictEqual(root.innerHTML,
+        '<div>' +
+          '<p>Counter: 0</p>' +
+          '<button class="target cycleCustomElement-MY-ELEMENT">' +
+            '<p>Some content</p>' +
+          '</button>' +
+        '</div>'
+      );
+      responses.dispose();
+      done();
+    });
+  });
+
+  it('should render custom element with a non-div top element', function (done) {
+    // Make simple custom element
+    function myElementDef({props}) {
+      return {
+        DOM: props.get('content').map(content => h('h3.myelementclass', content))
+      };
+    }
+    // Use the custom element
+    function app() {
+      return {
+        DOM: Rx.Observable.just(
+          h('div.toplevel', [
+            h('p', 'Before'),
+            h('my-element', {key: 1, content: 'Hello World'}),
+            h('p', 'After')
+          ])
+        )
+      };
+    }
+    let [requests, responses] = Cycle.run(app, {
+      DOM: makeDOMDriver(createRenderTarget(), {
+        'my-element': myElementDef
+      })
+    });
+    // Make assertions
+    responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+      let myElement = root.querySelector('.myelementclass');
+      assert.notStrictEqual(myElement, null);
+      assert.notStrictEqual(typeof myElement, 'undefined');
+      assert.strictEqual(myElement.tagName, 'H3');
+      assert.strictEqual(myElement.textContent, 'Hello World');
+      responses.dispose();
+      done();
+    });
+  });
+
+
   it('should catch custom element\'s interaction events', function (done) {
     // Make simple custom element
     function myElementDef() {
@@ -356,43 +471,6 @@ describe('Custom Elements', function () {
       assert.notStrictEqual(myElement, null);
       assert.notStrictEqual(typeof myElement, 'undefined');
       assert.strictEqual(myElement.tagName, 'H3');
-      responses.dispose();
-      done();
-    });
-  });
-
-  it('should warn when custom element is used with no key', function (done) {
-    let realConsole = console;
-    let warnMessages = [];
-    let noop = () => {};
-    console = {
-      log: noop,
-      error: noop,
-      warn: (msg) => warnMessages.push(msg)
-    };
-    // Make simple custom element
-    function myElementDef() {
-      return {
-        DOM: Rx.Observable.just(h('h3.myelementclass'))
-      };
-    }
-    // Make VNode with a string as child
-    function app() {
-      return {
-        DOM: Rx.Observable.just(h('div', h('my-element')))
-      };
-    }
-    let [requests, responses] = Cycle.run(app, {
-      DOM: makeDOMDriver(createRenderTarget(), {
-        'my-element': myElementDef
-      })
-    });
-    responses.DOM.get(':root').skip(1).take(1).subscribe(function () {
-      console = realConsole;
-      assert.strictEqual(warnMessages.length, 1);
-      assert.strictEqual(warnMessages[0],
-        'Missing `key` property for Cycle custom element MY-ELEMENT'
-      );
       responses.dispose();
       done();
     });

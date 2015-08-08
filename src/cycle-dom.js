@@ -1,10 +1,9 @@
-'use strict';
-let VirtualDOM = require('virtual-dom');
-let svg = require('virtual-dom/virtual-hyperscript/svg');
-let {makeDOMDriver} = require('./render-dom');
-let {makeHTMLDriver} = require('./render-html');
+let svg = require(`virtual-dom/virtual-hyperscript/svg`)
+let {makeDOMDriver} = require(`./render-dom`)
+let {makeHTMLDriver} = require(`./render-html`)
+let h = require(`./virtual-hyperscript`)
 
-let CycleWeb = {
+let CycleDOM = {
   /**
    * A factory for the DOM driver function. Takes a `container` to define the
    * target on the existing DOM which this driver will operate on. All custom
@@ -54,13 +53,26 @@ let CycleWeb = {
    * This is a helper for creating VTrees in Views.
    * @name h
    */
-  h: VirtualDOM.h,
+  h,
+
+  /**
+   * An adapter around virtual-hyperscript `h()` to allow JSX to be used easily
+   * with Babel. Place the [Babel configuration comment](
+   * http://babeljs.io/docs/advanced/transformers/other/react/) `@jsx hJSX` at
+   * the top of the ES6 file, make sure you import `hJSX` with
+   * `import {hJSX} from '@cycle/dom'`, and then you can use JSX to create
+   * VTrees.
+   * @name hJSX
+   */
+  hJSX: function hJSX(tag, attrs, ...children) {
+    return h(tag, attrs, children)
+  },
 
   /**
    * A shortcut to the svg hyperscript function.
    * @name svg
    */
-  svg: svg
-};
+  svg: svg,
+}
 
-module.exports = CycleWeb;
+module.exports = CycleDOM

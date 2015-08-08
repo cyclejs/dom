@@ -1,11 +1,12 @@
+/** @jsx hJSX */
 'use strict';
 /* global describe, it, beforeEach */
 let assert = require('assert');
 let Cycle = require('@cycle/core');
-let CycleWeb = require('../../src/cycle-web');
+let CycleDOM = require('../../src/cycle-dom');
 let Fixture89 = require('./fixtures/issue-89');
 let {Rx} = Cycle;
-let {h, makeDOMDriver} = CycleWeb;
+let {h, hJSX, makeDOMDriver} = CycleDOM;
 
 function createRenderTarget() {
   let element = document.createElement('div');
@@ -107,8 +108,33 @@ describe('Rendering', function () {
       let [requests, responses] = Cycle.run(app, {
         DOM: makeDOMDriver(createRenderTarget())
       });
-      responses.DOM.get(':root').skip(1).take(1).subscribe(function () {
-        let selectEl = document.querySelector('.my-class');
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+        let selectEl = root.querySelector('.my-class');
+        assert.notStrictEqual(selectEl, null);
+        assert.notStrictEqual(typeof selectEl, 'undefined');
+        assert.strictEqual(selectEl.tagName, 'SELECT');
+        responses.dispose();
+        done();
+      });
+    });
+
+    it('should convert a simple virtual-dom <select> (JSX) to DOM element', function (done) {
+      function app() {
+        return {
+          DOM: Rx.Observable.just(
+            <select className="my-class">
+              <option value="foo">Foo</option>
+              <option value="bar">Bar</option>
+              <option value="baz">Baz</option>
+            </select>
+          )
+        };
+      }
+      let [requests, responses] = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+        let selectEl = root.querySelector('.my-class');
         assert.notStrictEqual(selectEl, null);
         assert.notStrictEqual(typeof selectEl, 'undefined');
         assert.strictEqual(selectEl.tagName, 'SELECT');
@@ -130,12 +156,12 @@ describe('Rendering', function () {
       // Make assertions
       responses.DOM.get('.myelementclass', 'click').subscribe(ev => {
         assert.strictEqual(ev.type, 'click');
-        assert.strictEqual(ev.target.innerHTML, 'Foobar');
+        assert.strictEqual(ev.target.textContent, 'Foobar');
         responses.dispose();
         done();
       });
-      responses.DOM.get(':root').skip(1).take(1).subscribe(function () {
-        let myElement = document.querySelector('.myelementclass');
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+        let myElement = root.querySelector('.myelementclass');
         assert.notStrictEqual(myElement, null);
         assert.notStrictEqual(typeof myElement, 'undefined');
         assert.strictEqual(myElement.tagName, 'H3');
@@ -157,13 +183,13 @@ describe('Rendering', function () {
       });
       responses.DOM.get('.myelementclass', 'click').subscribe(ev => {
         assert.strictEqual(ev.type, 'click');
-        assert.strictEqual(ev.target.innerHTML, 'Foobar');
+        assert.strictEqual(ev.target.textContent, 'Foobar');
         responses.dispose();
         done();
       });
       // Make assertions
-      responses.DOM.get(':root').skip(1).take(1).subscribe(function () {
-        let myElement = document.querySelector('.myelementclass');
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+        let myElement = root.querySelector('.myelementclass');
         assert.notStrictEqual(myElement, null);
         assert.notStrictEqual(typeof myElement, 'undefined');
         assert.strictEqual(myElement.tagName, 'H3');
@@ -186,18 +212,18 @@ describe('Rendering', function () {
         })
       });
 
-      responses.DOM.get(':root').skip(1).take(1).subscribe(function () {
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
         setTimeout(() => {
-          let myelement = document.querySelector('.myelementclass');
+          let myelement = root.querySelector('.myelementclass');
           assert.notStrictEqual(myelement, null);
           assert.strictEqual(myelement.tagName, 'H3');
-          assert.strictEqual(myelement.innerHTML, '123');
+          assert.strictEqual(myelement.textContent, '123');
         }, 100);
         setTimeout(() => {
-          let myelement = document.querySelector('.myelementclass');
+          let myelement = root.querySelector('.myelementclass');
           assert.notStrictEqual(myelement, null);
           assert.strictEqual(myelement.tagName, 'H3');
-          assert.strictEqual(myelement.innerHTML, '456');
+          assert.strictEqual(myelement.textContent, '456');
           responses.dispose();
           done();
         }, 500);
@@ -225,6 +251,69 @@ describe('Rendering', function () {
       });
     });
 
+    it('should render a VTree with a child Observable<VTree>', function (done) {
+      function app() {
+        let child$ = Rx.Observable.just(
+          h('h4.child', {}, 'I am a kid')
+        ).delay(80);
+        return {
+          DOM: Rx.Observable.just(h('div.my-class', [
+            h('p', {}, 'Ordinary paragraph'),
+            child$
+          ]))
+        };
+      }
+      let [requests, responses] = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+        let selectEl = root.querySelector('.child');
+        assert.notStrictEqual(selectEl, null);
+        assert.notStrictEqual(typeof selectEl, 'undefined');
+        assert.strictEqual(selectEl.tagName, 'H4');
+        assert.strictEqual(selectEl.textContent, 'I am a kid');
+        responses.dispose();
+        done();
+      });
+    });
+
+    it('should render a VTree with a grandchild Observable<VTree>', function (done) {
+      function app() {
+        let grandchild$ = Rx.Observable
+          .just(
+            h('h4.grandchild', {}, [
+              'I am a baby'
+            ])
+          )
+          .delay(20);
+        let child$ = Rx.Observable
+          .just(
+            h('h3.child', {}, [
+              'I am a kid', grandchild$
+            ])
+          )
+          .delay(80);
+        return {
+          DOM: Rx.Observable.just(h('div.my-class', [
+            h('p', {}, 'Ordinary paragraph'),
+            child$
+          ]))
+        };
+      }
+      let [requests, responses] = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+      responses.DOM.get(':root').skip(1).take(1).subscribe(function (root) {
+        let selectEl = root.querySelector('.grandchild');
+        assert.notStrictEqual(selectEl, null);
+        assert.notStrictEqual(typeof selectEl, 'undefined');
+        assert.strictEqual(selectEl.tagName, 'H4');
+        assert.strictEqual(selectEl.textContent, 'I am a baby');
+        responses.dispose();
+        done();
+      });
+    });
+
     it('should not work after has been disposed', function (done) {
       let number$ = Rx.Observable.range(1, 3)
         .concatMap(x => Rx.Observable.just(x).delay(50));
@@ -238,13 +327,13 @@ describe('Rendering', function () {
       let [requests, responses] = Cycle.run(app, {
         DOM: makeDOMDriver(createRenderTarget())
       });
-      responses.DOM.get(':root').skip(1).subscribe(function () {
-        let selectEl = document.querySelector('.target');
+      responses.DOM.get(':root').skip(1).subscribe(function (root) {
+        let selectEl = root.querySelector('.target');
         assert.notStrictEqual(selectEl, null);
         assert.notStrictEqual(typeof selectEl, 'undefined');
         assert.strictEqual(selectEl.tagName, 'H3');
-        assert.notStrictEqual(selectEl.innerHTML, '3');
-        if (selectEl.innerHTML === '2') {
+        assert.notStrictEqual(selectEl.textContent, '3');
+        if (selectEl.textContent === '2') {
           responses.dispose();
           done();
         }

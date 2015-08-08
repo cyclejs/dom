@@ -1,6 +1,7 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.CycleWeb = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-'use strict';
-var Rx = require('rx');
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.CycleDOM = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+"use strict";
+
+var Rx = require("rx");
 
 function makeRequestProxies(drivers) {
   var requestProxies = {};
@@ -30,7 +31,7 @@ function makeDispose(requestProxies, rawResponses) {
       }
     }
     for (var _name3 in rawResponses) {
-      if (rawResponses.hasOwnProperty(_name3) && typeof rawResponses[_name3].dispose === 'function') {
+      if (rawResponses.hasOwnProperty(_name3) && typeof rawResponses[_name3].dispose === "function") {
         rawResponses[_name3].dispose();
       }
     }
@@ -38,18 +39,25 @@ function makeDispose(requestProxies, rawResponses) {
 }
 
 function makeAppInput(requestProxies, rawResponses) {
-  Object.defineProperty(rawResponses, 'dispose', {
+  Object.defineProperty(rawResponses, "dispose", {
     enumerable: false,
     value: makeDispose(requestProxies, rawResponses)
   });
   return rawResponses;
 }
 
+function logToConsoleError(err) {
+  var target = err.stack || err;
+  if (console && console.error) {
+    console.error(target);
+  }
+}
+
 function replicateMany(original, imitators) {
   for (var _name4 in original) {
     if (original.hasOwnProperty(_name4)) {
       if (imitators.hasOwnProperty(_name4) && !imitators[_name4].isDisposed) {
-        original[_name4].subscribe(imitators[_name4].asObserver());
+        original[_name4].doOnError(logToConsoleError).subscribe(imitators[_name4].asObserver());
       }
     }
   }
@@ -64,21 +72,21 @@ function isObjectEmpty(obj) {
   return true;
 }
 
-function run(app, drivers) {
-  if (typeof app !== 'function') {
-    throw new Error('First argument given to Cycle.run() must be the `app` ' + 'function.');
+function run(main, drivers) {
+  if (typeof main !== "function") {
+    throw new Error("First argument given to Cycle.run() must be the 'main' " + "function.");
   }
-  if (typeof drivers !== 'object' || drivers === null) {
-    throw new Error('Second argument given to Cycle.run() must be an object ' + 'with driver functions as properties.');
+  if (typeof drivers !== "object" || drivers === null) {
+    throw new Error("Second argument given to Cycle.run() must be an object " + "with driver functions as properties.");
   }
   if (isObjectEmpty(drivers)) {
-    throw new Error('Second argument given to Cycle.run() must be an object ' + 'with at least one driver function declared as a property.');
+    throw new Error("Second argument given to Cycle.run() must be an object " + "with at least one driver function declared as a property.");
   }
 
   var requestProxies = makeRequestProxies(drivers);
   var rawResponses = callDrivers(drivers, requestProxies);
   var responses = makeAppInput(requestProxies, rawResponses);
-  var requests = app(responses);
+  var requests = main(responses);
   setTimeout(function () {
     return replicateMany(requests, requestProxies);
   }, 1);
@@ -87,21 +95,21 @@ function run(app, drivers) {
 
 var Cycle = {
   /**
-   * Takes an `app` function and circularly connects it to the given collection
+   * Takes an `main` function and circularly connects it to the given collection
    * of driver functions.
    *
-   * The `app` function expects a collection of "driver response" Observables as
-   * input, and should return a collection of "driver request" Observables.
+   * The `main` function expects a collection of "driver response" Observables
+   * as input, and should return a collection of "driver request" Observables.
    * A "collection of Observables" is a JavaScript object where
    * keys match the driver names registered by the `drivers` object, and values
    * are Observables or a collection of Observables.
    *
-   * @param {Function} app a function that takes `responses` as input
+   * @param {Function} main a function that takes `responses` as input
    * and outputs a collection of `requests` Observables.
    * @param {Object} drivers an object where keys are driver names and values
    * are driver functions.
    * @return {Array} an array where the first object is the collection of driver
-   * requests, and the second objet is the collection of driver responses, that
+   * requests, and the second object is the collection of driver responses, that
    * can be used for debugging or testing.
    * @function run
    */
@@ -12296,10 +12304,11 @@ module.exports = parser;
 /**
  * DOM/html string to vdom parser
  *
- * @param   Mixed   el  DOM element or html string 
- * @return  Object      VNode or VText
+ * @param   Mixed   el    DOM element or html string
+ * @param   String  attr  Attribute name that contains vdom key
+ * @return  Object        VNode or VText
  */
-function parser(el) {
+function parser(el, attr) {
 	// empty input fallback to empty text node
 	if (!el) {
 		return createNode(document.createTextNode(''));
@@ -12330,23 +12339,24 @@ function parser(el) {
 		throw new Error('invalid dom node', el);
 	}
 
-	return createNode(el);
+	return createNode(el, attr);
 }
 
 /**
  * Create vdom from dom node
  *
- * @param   Object  el  DOM element
- * @return  Object      VNode or VText
+ * @param   Object  el    DOM element
+ * @param   String  attr  Attribute name that contains vdom key
+ * @return  Object        VNode or VText
  */
-function createNode(el) {
+function createNode(el, attr) {
 	// html comment is not currently supported by virtual-dom
 	if (el.nodeType === 3) {
 		return createVirtualTextNode(el);
 
 	// cdata or doctype is not currently supported by virtual-dom
 	} else if (el.nodeType === 1 || el.nodeType === 9) {
-		return createVirtualDomNode(el);
+		return createVirtualDomNode(el, attr);
 	}
 
 	// default to empty text node
@@ -12366,29 +12376,34 @@ function createVirtualTextNode(el) {
 /**
  * Create vnode from dom node
  *
- * @param   Object  el  DOM element
- * @return  Object      VNode
+ * @param   Object  el    DOM element
+ * @param   String  attr  Attribute name that contains vdom key
+ * @return  Object        VNode
  */
-function createVirtualDomNode(el) {
+function createVirtualDomNode(el, attr) {
+	var ns = el.namespaceURI !== HTML_NAMESPACE ? el.namespaceURI : null;
+	var key = attr && el.getAttribute(attr) ? el.getAttribute(attr) : null;
+
 	return new VNode(
 		el.tagName
 		, createProperties(el)
-		, createChildren(el)
-		, null
-		, el.namespaceURI
+		, createChildren(el, attr)
+		, key
+		, ns
 	);
 }
 
 /**
  * Recursively create vdom
  *
- * @param   Object  el  Parent element
- * @return  Array       Child vnode or vtext
+ * @param   Object  el    Parent element
+ * @param   String  attr  Attribute name that contains vdom key
+ * @return  Array         Child vnode or vtext
  */
-function createChildren(el) {
+function createChildren(el, attr) {
 	var children = [];
 	for (var i = 0; i < el.childNodes.length; i++) {
-		children.push(createNode(el.childNodes[i]));
+		children.push(createNode(el.childNodes[i], attr));
 	};
 
 	return children;
@@ -12502,7 +12517,7 @@ function createPropertyNS(attr) {
 	};
 }
 
-},{"./namespace-map":61,"./property-map":62,"virtual-dom/vnode/vnode":107,"virtual-dom/vnode/vtext":109}],61:[function(require,module,exports){
+},{"./namespace-map":61,"./property-map":62,"virtual-dom/vnode/vnode":104,"virtual-dom/vnode/vtext":106}],61:[function(require,module,exports){
 
 /**
  * namespace-map.js
@@ -13117,7 +13132,7 @@ function closeTag(node) {
   var tag = node.tagName.toLowerCase();
   return voidElements[tag] ? '' : '</' + tag + '>';
 }
-},{"./create-attribute":63,"./void-elements":74,"escape-html":65,"param-case":71,"virtual-dom/virtual-hyperscript/hooks/attribute-hook":93,"virtual-dom/virtual-hyperscript/hooks/soft-set-hook":95,"virtual-dom/vnode/is-thunk":101,"virtual-dom/vnode/is-vnode":103,"virtual-dom/vnode/is-vtext":104,"virtual-dom/vnode/is-widget":105,"xtend":72}],65:[function(require,module,exports){
+},{"./create-attribute":63,"./void-elements":74,"escape-html":65,"param-case":71,"virtual-dom/virtual-hyperscript/hooks/attribute-hook":90,"virtual-dom/virtual-hyperscript/hooks/soft-set-hook":92,"virtual-dom/vnode/is-thunk":98,"virtual-dom/vnode/is-vnode":100,"virtual-dom/vnode/is-vtext":101,"virtual-dom/vnode/is-widget":102,"xtend":72}],65:[function(require,module,exports){
 /*!
  * escape-html
  * Copyright(c) 2012-2013 TJ Holowaychuk
@@ -13476,38 +13491,11 @@ module.exports = {
   'wbr': true
 };
 },{}],75:[function(require,module,exports){
-var createElement = require("./vdom/create-element.js")
-
-module.exports = createElement
-
-},{"./vdom/create-element.js":88}],76:[function(require,module,exports){
 var diff = require("./vtree/diff.js")
 
 module.exports = diff
 
-},{"./vtree/diff.js":111}],77:[function(require,module,exports){
-var h = require("./virtual-hyperscript/index.js")
-
-module.exports = h
-
-},{"./virtual-hyperscript/index.js":96}],78:[function(require,module,exports){
-var diff = require("./diff.js")
-var patch = require("./patch.js")
-var h = require("./h.js")
-var create = require("./create-element.js")
-var VNode = require('./vnode/vnode.js')
-var VText = require('./vnode/vtext.js')
-
-module.exports = {
-    diff: diff,
-    patch: patch,
-    h: h,
-    create: create,
-    VNode: VNode,
-    VText: VText
-}
-
-},{"./create-element.js":75,"./diff.js":76,"./h.js":77,"./patch.js":86,"./vnode/vnode.js":107,"./vnode/vtext.js":109}],79:[function(require,module,exports){
+},{"./vtree/diff.js":108}],76:[function(require,module,exports){
 /*!
  * Cross-Browser Split 1.1.1
  * Copyright 2007-2012 Steven Levithan <stevenlevithan.com>
@@ -13615,7 +13603,7 @@ module.exports = (function split(undef) {
   return self;
 })();
 
-},{}],80:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 'use strict';
 
 var OneVersionConstraint = require('individual/one-version');
@@ -13637,7 +13625,7 @@ function EvStore(elem) {
     return hash;
 }
 
-},{"individual/one-version":82}],81:[function(require,module,exports){
+},{"individual/one-version":79}],78:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -13660,7 +13648,7 @@ function Individual(key, value) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],82:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 'use strict';
 
 var Individual = require('./index.js');
@@ -13684,7 +13672,7 @@ function OneVersion(moduleName, version, defaultValue) {
     return Individual(key, defaultValue);
 }
 
-},{"./index.js":81}],83:[function(require,module,exports){
+},{"./index.js":78}],80:[function(require,module,exports){
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -13703,14 +13691,14 @@ if (typeof document !== 'undefined') {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"min-document":2}],84:[function(require,module,exports){
+},{"min-document":2}],81:[function(require,module,exports){
 "use strict";
 
 module.exports = function isObject(x) {
 	return typeof x === "object" && x !== null;
 };
 
-},{}],85:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 var nativeIsArray = Array.isArray
 var toString = Object.prototype.toString
 
@@ -13720,12 +13708,12 @@ function isArray(obj) {
     return toString.call(obj) === "[object Array]"
 }
 
-},{}],86:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 var patch = require("./vdom/patch.js")
 
 module.exports = patch
 
-},{"./vdom/patch.js":91}],87:[function(require,module,exports){
+},{"./vdom/patch.js":88}],84:[function(require,module,exports){
 var isObject = require("is-object")
 var isHook = require("../vnode/is-vhook.js")
 
@@ -13824,7 +13812,7 @@ function getPrototype(value) {
     }
 }
 
-},{"../vnode/is-vhook.js":102,"is-object":84}],88:[function(require,module,exports){
+},{"../vnode/is-vhook.js":99,"is-object":81}],85:[function(require,module,exports){
 var document = require("global/document")
 
 var applyProperties = require("./apply-properties")
@@ -13872,7 +13860,7 @@ function createElement(vnode, opts) {
     return node
 }
 
-},{"../vnode/handle-thunk.js":100,"../vnode/is-vnode.js":103,"../vnode/is-vtext.js":104,"../vnode/is-widget.js":105,"./apply-properties":87,"global/document":83}],89:[function(require,module,exports){
+},{"../vnode/handle-thunk.js":97,"../vnode/is-vnode.js":100,"../vnode/is-vtext.js":101,"../vnode/is-widget.js":102,"./apply-properties":84,"global/document":80}],86:[function(require,module,exports){
 // Maps a virtual DOM tree onto a real DOM tree in an efficient manner.
 // We don't want to read all of the DOM nodes in the tree so we use
 // the in-order tree indexing to eliminate recursion down certain branches.
@@ -13959,13 +13947,12 @@ function ascending(a, b) {
     return a > b ? 1 : -1
 }
 
-},{}],90:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 var applyProperties = require("./apply-properties")
 
 var isWidget = require("../vnode/is-widget.js")
 var VPatch = require("../vnode/vpatch.js")
 
-var render = require("./create-element")
 var updateWidget = require("./update-widget")
 
 module.exports = applyPatch
@@ -14013,7 +14000,7 @@ function removeNode(domNode, vNode) {
 }
 
 function insertNode(parentNode, vNode, renderOptions) {
-    var newNode = render(vNode, renderOptions)
+    var newNode = renderOptions.render(vNode, renderOptions)
 
     if (parentNode) {
         parentNode.appendChild(newNode)
@@ -14030,7 +14017,7 @@ function stringPatch(domNode, leftVNode, vText, renderOptions) {
         newNode = domNode
     } else {
         var parentNode = domNode.parentNode
-        newNode = render(vText, renderOptions)
+        newNode = renderOptions.render(vText, renderOptions)
 
         if (parentNode && newNode !== domNode) {
             parentNode.replaceChild(newNode, domNode)
@@ -14047,7 +14034,7 @@ function widgetPatch(domNode, leftVNode, widget, renderOptions) {
     if (updating) {
         newNode = widget.update(leftVNode, domNode) || domNode
     } else {
-        newNode = render(widget, renderOptions)
+        newNode = renderOptions.render(widget, renderOptions)
     }
 
     var parentNode = domNode.parentNode
@@ -14065,7 +14052,7 @@ function widgetPatch(domNode, leftVNode, widget, renderOptions) {
 
 function vNodePatch(domNode, leftVNode, vNode, renderOptions) {
     var parentNode = domNode.parentNode
-    var newNode = render(vNode, renderOptions)
+    var newNode = renderOptions.render(vNode, renderOptions)
 
     if (parentNode && newNode !== domNode) {
         parentNode.replaceChild(newNode, domNode)
@@ -14113,16 +14100,21 @@ function replaceRoot(oldRoot, newRoot) {
     return newRoot;
 }
 
-},{"../vnode/is-widget.js":105,"../vnode/vpatch.js":108,"./apply-properties":87,"./create-element":88,"./update-widget":92}],91:[function(require,module,exports){
+},{"../vnode/is-widget.js":102,"../vnode/vpatch.js":105,"./apply-properties":84,"./update-widget":89}],88:[function(require,module,exports){
 var document = require("global/document")
 var isArray = require("x-is-array")
 
+var render = require("./create-element")
 var domIndex = require("./dom-index")
 var patchOp = require("./patch-op")
 module.exports = patch
 
-function patch(rootNode, patches) {
-    return patchRecursive(rootNode, patches)
+function patch(rootNode, patches, renderOptions) {
+    renderOptions = renderOptions || {}
+    renderOptions.patch = renderOptions.patch || patchRecursive
+    renderOptions.render = renderOptions.render || render
+
+    return renderOptions.patch(rootNode, patches, renderOptions)
 }
 
 function patchRecursive(rootNode, patches, renderOptions) {
@@ -14135,11 +14127,8 @@ function patchRecursive(rootNode, patches, renderOptions) {
     var index = domIndex(rootNode, patches.a, indices)
     var ownerDocument = rootNode.ownerDocument
 
-    if (!renderOptions) {
-        renderOptions = { patch: patchRecursive }
-        if (ownerDocument !== document) {
-            renderOptions.document = ownerDocument
-        }
+    if (!renderOptions.document && ownerDocument !== document) {
+        renderOptions.document = ownerDocument
     }
 
     for (var i = 0; i < indices.length; i++) {
@@ -14191,7 +14180,7 @@ function patchIndices(patches) {
     return indices
 }
 
-},{"./dom-index":89,"./patch-op":90,"global/document":83,"x-is-array":85}],92:[function(require,module,exports){
+},{"./create-element":85,"./dom-index":86,"./patch-op":87,"global/document":80,"x-is-array":82}],89:[function(require,module,exports){
 var isWidget = require("../vnode/is-widget.js")
 
 module.exports = updateWidget
@@ -14208,7 +14197,7 @@ function updateWidget(a, b) {
     return false
 }
 
-},{"../vnode/is-widget.js":105}],93:[function(require,module,exports){
+},{"../vnode/is-widget.js":102}],90:[function(require,module,exports){
 'use strict';
 
 module.exports = AttributeHook;
@@ -14245,7 +14234,7 @@ AttributeHook.prototype.unhook = function (node, prop, next) {
 
 AttributeHook.prototype.type = 'AttributeHook';
 
-},{}],94:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 'use strict';
 
 var EvStore = require('ev-store');
@@ -14274,7 +14263,7 @@ EvHook.prototype.unhook = function(node, propertyName) {
     es[propName] = undefined;
 };
 
-},{"ev-store":80}],95:[function(require,module,exports){
+},{"ev-store":77}],92:[function(require,module,exports){
 'use strict';
 
 module.exports = SoftSetHook;
@@ -14293,7 +14282,7 @@ SoftSetHook.prototype.hook = function (node, propertyName) {
     }
 };
 
-},{}],96:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 'use strict';
 
 var isArray = require('x-is-array');
@@ -14359,6 +14348,8 @@ function h(tagName, properties, children) {
 function addChild(c, childNodes, tag, props) {
     if (typeof c === 'string') {
         childNodes.push(new VText(c));
+    } else if (typeof c === 'number') {
+        childNodes.push(new VText(String(c)));
     } else if (isChild(c)) {
         childNodes.push(c);
     } else if (isArray(c)) {
@@ -14430,12 +14421,12 @@ function errorString(obj) {
     }
 }
 
-},{"../vnode/is-thunk":101,"../vnode/is-vhook":102,"../vnode/is-vnode":103,"../vnode/is-vtext":104,"../vnode/is-widget":105,"../vnode/vnode.js":107,"../vnode/vtext.js":109,"./hooks/ev-hook.js":94,"./hooks/soft-set-hook.js":95,"./parse-tag.js":97,"x-is-array":85}],97:[function(require,module,exports){
+},{"../vnode/is-thunk":98,"../vnode/is-vhook":99,"../vnode/is-vnode":100,"../vnode/is-vtext":101,"../vnode/is-widget":102,"../vnode/vnode.js":104,"../vnode/vtext.js":106,"./hooks/ev-hook.js":91,"./hooks/soft-set-hook.js":92,"./parse-tag.js":94,"x-is-array":82}],94:[function(require,module,exports){
 'use strict';
 
 var split = require('browser-split');
 
-var classIdSplit = /([\.#]?[a-zA-Z0-9_:-]+)/;
+var classIdSplit = /([\.#]?[a-zA-Z0-9\u007F-\uFFFF_:-]+)/;
 var notClassId = /^\.|#/;
 
 module.exports = parseTag;
@@ -14486,7 +14477,7 @@ function parseTag(tag, props) {
     return props.namespace ? tagName : tagName.toUpperCase();
 }
 
-},{"browser-split":79}],98:[function(require,module,exports){
+},{"browser-split":76}],95:[function(require,module,exports){
 'use strict';
 
 var DEFAULT_NAMESPACE = null;
@@ -14801,7 +14792,7 @@ function SVGAttributeNamespace(value) {
   }
 }
 
-},{}],99:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 'use strict';
 
 var isArray = require('x-is-array');
@@ -14865,7 +14856,7 @@ function isChildren(x) {
     return typeof x === 'string' || isArray(x);
 }
 
-},{"./hooks/attribute-hook":93,"./index.js":96,"./svg-attribute-namespace":98,"x-is-array":85}],100:[function(require,module,exports){
+},{"./hooks/attribute-hook":90,"./index.js":93,"./svg-attribute-namespace":95,"x-is-array":82}],97:[function(require,module,exports){
 var isVNode = require("./is-vnode")
 var isVText = require("./is-vtext")
 var isWidget = require("./is-widget")
@@ -14907,14 +14898,14 @@ function renderThunk(thunk, previous) {
     return renderedThunk
 }
 
-},{"./is-thunk":101,"./is-vnode":103,"./is-vtext":104,"./is-widget":105}],101:[function(require,module,exports){
+},{"./is-thunk":98,"./is-vnode":100,"./is-vtext":101,"./is-widget":102}],98:[function(require,module,exports){
 module.exports = isThunk
 
 function isThunk(t) {
     return t && t.type === "Thunk"
 }
 
-},{}],102:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 module.exports = isHook
 
 function isHook(hook) {
@@ -14923,7 +14914,7 @@ function isHook(hook) {
        typeof hook.unhook === "function" && !hook.hasOwnProperty("unhook"))
 }
 
-},{}],103:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 var version = require("./version")
 
 module.exports = isVirtualNode
@@ -14932,7 +14923,7 @@ function isVirtualNode(x) {
     return x && x.type === "VirtualNode" && x.version === version
 }
 
-},{"./version":106}],104:[function(require,module,exports){
+},{"./version":103}],101:[function(require,module,exports){
 var version = require("./version")
 
 module.exports = isVirtualText
@@ -14941,17 +14932,17 @@ function isVirtualText(x) {
     return x && x.type === "VirtualText" && x.version === version
 }
 
-},{"./version":106}],105:[function(require,module,exports){
+},{"./version":103}],102:[function(require,module,exports){
 module.exports = isWidget
 
 function isWidget(w) {
     return w && w.type === "Widget"
 }
 
-},{}],106:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 module.exports = "2"
 
-},{}],107:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 var version = require("./version")
 var isVNode = require("./is-vnode")
 var isWidget = require("./is-widget")
@@ -15025,7 +15016,7 @@ function VirtualNode(tagName, properties, children, key, namespace) {
 VirtualNode.prototype.version = version
 VirtualNode.prototype.type = "VirtualNode"
 
-},{"./is-thunk":101,"./is-vhook":102,"./is-vnode":103,"./is-widget":105,"./version":106}],108:[function(require,module,exports){
+},{"./is-thunk":98,"./is-vhook":99,"./is-vnode":100,"./is-widget":102,"./version":103}],105:[function(require,module,exports){
 var version = require("./version")
 
 VirtualPatch.NONE = 0
@@ -15049,7 +15040,7 @@ function VirtualPatch(type, vNode, patch) {
 VirtualPatch.prototype.version = version
 VirtualPatch.prototype.type = "VirtualPatch"
 
-},{"./version":106}],109:[function(require,module,exports){
+},{"./version":103}],106:[function(require,module,exports){
 var version = require("./version")
 
 module.exports = VirtualText
@@ -15061,7 +15052,7 @@ function VirtualText(text) {
 VirtualText.prototype.version = version
 VirtualText.prototype.type = "VirtualText"
 
-},{"./version":106}],110:[function(require,module,exports){
+},{"./version":103}],107:[function(require,module,exports){
 var isObject = require("is-object")
 var isHook = require("../vnode/is-vhook")
 
@@ -15121,7 +15112,7 @@ function getPrototype(value) {
   }
 }
 
-},{"../vnode/is-vhook":102,"is-object":84}],111:[function(require,module,exports){
+},{"../vnode/is-vhook":99,"is-object":81}],108:[function(require,module,exports){
 var isArray = require("x-is-array")
 
 var VPatch = require("../vnode/vpatch")
@@ -15532,7 +15523,7 @@ function keyIndex(children) {
 
     return {
         keys: keys,     // A hash of key name to index
-        free: free,     // An array of unkeyed item indices
+        free: free      // An array of unkeyed item indices
     }
 }
 
@@ -15550,28 +15541,28 @@ function appendPatch(apply, patch) {
     }
 }
 
-},{"../vnode/handle-thunk":100,"../vnode/is-thunk":101,"../vnode/is-vnode":103,"../vnode/is-vtext":104,"../vnode/is-widget":105,"../vnode/vpatch":108,"./diff-props":110,"x-is-array":85}],112:[function(require,module,exports){
-'use strict';
+},{"../vnode/handle-thunk":97,"../vnode/is-thunk":98,"../vnode/is-vnode":100,"../vnode/is-vtext":101,"../vnode/is-widget":102,"../vnode/vpatch":105,"./diff-props":107,"x-is-array":82}],109:[function(require,module,exports){
+"use strict";
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-var _require = require('@cycle/core');
+var _require = require("@cycle/core");
 
 var Rx = _require.Rx;
 
-var ALL_PROPS = '*';
-var PROPS_DRIVER_NAME = 'props';
-var EVENTS_SINK_NAME = 'events';
+var ALL_PROPS = "*";
+var PROPS_DRIVER_NAME = "props";
+var EVENTS_SINK_NAME = "events";
 
 function makeDispatchFunction(element, eventName) {
   return function dispatchCustomEvent(evData) {
-    //console.log('%cdispatchCustomEvent ' + eventName,
-    //  'background-color: #CCCCFF; color: black');
+    //console.log(`%cdispatchCustomEvent ` + eventName,
+    //  `background-color: #CCCCFF; color: black`);
     var event = undefined;
     try {
       event = new Event(eventName);
     } catch (err) {
-      event = document.createEvent('Event');
+      event = document.createEvent("Event");
       event.initEvent(eventName, true, true);
     }
     event.detail = evData;
@@ -15584,11 +15575,9 @@ function subscribeDispatchers(element) {
 
   var disposables = new Rx.CompositeDisposable();
   for (var _name in customEvents) {
-    if (customEvents.hasOwnProperty(_name)) {
-      if (typeof customEvents[_name].subscribe === 'function') {
-        var disposable = customEvents[_name].subscribe(makeDispatchFunction(element, _name));
-        disposables.add(disposable);
-      }
+    if (customEvents.hasOwnProperty(_name) && typeof customEvents[_name].subscribe === "function") {
+      var disposable = customEvents[_name].subscribe(makeDispatchFunction(element, _name));
+      disposables.add(disposable);
     }
   }
   return disposables;
@@ -15614,25 +15603,25 @@ function subscribeEventDispatchingSink(element, widget) {
 function makePropertiesDriver() {
   var propertiesDriver = {};
   var defaultComparer = Rx.helpers.defaultComparer;
-  Object.defineProperty(propertiesDriver, 'type', {
+  Object.defineProperty(propertiesDriver, "type", {
     enumerable: false,
-    value: 'PropertiesDriver'
+    value: "PropertiesDriver"
   });
-  Object.defineProperty(propertiesDriver, 'get', {
+  Object.defineProperty(propertiesDriver, "get", {
     enumerable: false,
     value: function get(streamKey) {
-      var comparer = arguments[1] === undefined ? defaultComparer : arguments[1];
+      var comparer = arguments.length <= 1 || arguments[1] === undefined ? defaultComparer : arguments[1];
 
-      if (typeof streamKey === 'undefined') {
-        throw new Error('Custom element driver `props.get()` expects an ' + 'argument in the getter.');
+      if (typeof streamKey === "undefined") {
+        throw new Error("Custom element driver `props.get()` expects an " + "argument in the getter.");
       }
-      if (typeof this[streamKey] === 'undefined') {
+      if (typeof this[streamKey] === "undefined") {
         this[streamKey] = new Rx.ReplaySubject(1);
       }
       return this[streamKey].distinctUntilChanged(Rx.helpers.identity, comparer);
     }
   });
-  Object.defineProperty(propertiesDriver, 'getAll', {
+  Object.defineProperty(propertiesDriver, "getAll", {
     enumerable: false,
     value: function getAll() {
       return this.get(ALL_PROPS);
@@ -15642,10 +15631,11 @@ function makePropertiesDriver() {
 }
 
 function createContainerElement(tagName, vtreeProperties) {
-  var element = document.createElement('div');
-  element.id = vtreeProperties.id || '';
-  element.className = vtreeProperties.className || '';
-  element.className += ' cycleCustomElement-' + tagName.toUpperCase();
+  var element = document.createElement("div");
+  element.id = vtreeProperties.id || "";
+  element.className = vtreeProperties.className || "";
+  element.className += " cycleCustomElement-" + tagName.toUpperCase();
+  element.className = element.className.trim();
   element.cycleCustomElementMetadata = {
     propertiesDriver: null,
     rootElem$: null,
@@ -15655,15 +15645,9 @@ function createContainerElement(tagName, vtreeProperties) {
   return element;
 }
 
-function warnIfVTreeHasNoKey(vtree) {
-  if (typeof vtree.key === 'undefined') {
-    console.warn('Missing `key` property for Cycle custom element ' + vtree.tagName);
-  }
-}
-
 function throwIfVTreeHasPropertyChildren(vtree) {
-  if (typeof vtree.properties.children !== 'undefined') {
-    throw new Error('Custom element should not have property `children`. ' + 'It is reserved for children elements nested into this custom element.');
+  if (typeof vtree.properties.children !== "undefined") {
+    throw new Error("Custom element should not have property `children`. " + "It is reserved for children elements nested into this custom element.");
   }
 }
 
@@ -15675,11 +15659,10 @@ function makeCustomElementInput(domOutput, propertiesDriver, domDriverName) {
 
 function makeConstructor() {
   return function customElementConstructor(vtree, CERegistry, driverName) {
-    //console.log('%cnew (constructor) custom element ' + vtree.tagName,
-    //  'color: #880088');
-    warnIfVTreeHasNoKey(vtree);
+    //console.log(`%cnew (constructor) custom element ` + vtree.tagName,
+    //  `color: #880088`)
     throwIfVTreeHasPropertyChildren(vtree);
-    this.type = 'Widget';
+    this.type = "Widget";
     this.properties = vtree.properties;
     this.properties.children = vtree.children;
     this.key = vtree.key;
@@ -15692,31 +15675,29 @@ function makeConstructor() {
 }
 
 function validateDefFnOutput(defFnOutput, domDriverName, tagName) {
-  if (typeof defFnOutput !== 'object') {
-    throw new Error('Custom element definition function for \'' + tagName + '\' ' + ' should output an object.');
+  if (typeof defFnOutput !== "object") {
+    throw new Error("Custom element definition function for `" + tagName + "` " + " should output an object.");
   }
-  if (typeof defFnOutput[domDriverName] === 'undefined') {
-    throw new Error('Custom element definition function for \'' + tagName + '\' ' + ('should output an object containing \'' + domDriverName + '\'.'));
+  if (typeof defFnOutput[domDriverName] === "undefined") {
+    throw new Error("Custom element definition function for '" + tagName + "' " + ("should output an object containing `" + domDriverName + "`."));
   }
-  if (typeof defFnOutput[domDriverName].subscribe !== 'function') {
-    throw new Error('Custom element definition function for \'' + tagName + '\' ' + 'should output an object containing an Observable of VTree, named ' + ('\'' + domDriverName + '\'.'));
+  if (typeof defFnOutput[domDriverName].subscribe !== "function") {
+    throw new Error("Custom element definition function for `" + tagName + "` " + "should output an object containing an Observable of VTree, named " + ("`" + domDriverName + "`."));
   }
   for (var _name2 in defFnOutput) {
-    if (defFnOutput.hasOwnProperty(_name2)) {
-      if (_name2 !== domDriverName && _name2 !== EVENTS_SINK_NAME) {
-        throw new Error('Unknown \'' + _name2 + '\' found on custom element ' + ('\'' + tagName + '\'s definition function\'s output.'));
-      }
+    if (defFnOutput.hasOwnProperty(_name2) && _name2 !== domDriverName && _name2 !== EVENTS_SINK_NAME) {
+      throw new Error("Unknown `" + _name2 + "` found on custom element " + ("`" + tagName + "`s definition function's output."));
     }
   }
 }
 
 function makeInit(tagName, definitionFn) {
-  var _require2 = require('./render-dom');
+  var _require2 = require("./render-dom");
 
   var makeDOMDriverWithRegistry = _require2.makeDOMDriverWithRegistry;
 
   return function initCustomElement() {
-    //console.log('%cInit() custom element ' + tagName, 'color: #880088');
+    //console.log(`%cInit() custom element ` + tagName, `color: #880088`)
     var widget = this;
     var driverName = widget.driverName;
     var registry = widget.customElementsRegistry;
@@ -15725,13 +15706,15 @@ function makeInit(tagName, definitionFn) {
     var domDriver = makeDOMDriverWithRegistry(element, registry);
     var propertiesDriver = makePropertiesDriver();
     var domResponse = domDriver(proxyVTree$, driverName);
-    var rootElem$ = domResponse.get(':root');
+    var rootElem$ = domResponse.get(":root");
+    rootElem$.subscribe(function (rootElem) {
+      // This is expected to happen before initCustomElement() returns `element`
+      element = rootElem;
+    });
     var defFnInput = makeCustomElementInput(domResponse, propertiesDriver, driverName);
     var requests = definitionFn(defFnInput);
     validateDefFnOutput(requests, driverName, tagName);
-    setTimeout(function () {
-      return widget.disposables.add(requests[driverName].subscribe(proxyVTree$.asObserver()));
-    }, 1);
+    widget.disposables.add(requests[driverName].subscribe(proxyVTree$.asObserver()));
     widget.disposables.add(rootElem$.subscribe(widget.firstRootElem$.asObserver()));
     element.cycleCustomElementMetadata = {
       propertiesDriver: propertiesDriver,
@@ -15750,14 +15733,14 @@ function makeInit(tagName, definitionFn) {
 
 function validatePropertiesDriverInMetadata(element, fnName) {
   if (!element) {
-    throw new Error('Missing DOM element when calling ' + fnName + ' on custom ' + 'element Widget.');
+    throw new Error("Missing DOM element when calling `" + fnName + "` on " + "custom element Widget.");
   }
   if (!element.cycleCustomElementMetadata) {
-    throw new Error('Missing custom element metadata on DOM element when ' + 'calling ' + fnName + ' on custom element Widget.');
+    throw new Error("Missing custom element metadata on DOM element when " + ("calling `" + fnName + "` on custom element Widget."));
   }
   var metadata = element.cycleCustomElementMetadata;
-  if (metadata.propertiesDriver.type !== 'PropertiesDriver') {
-    throw new Error('Custom element metadata\'s propertiesDriver type is ' + 'invalid: ' + metadata.propertiesDriver.type + '.');
+  if (metadata.propertiesDriver.type !== "PropertiesDriver") {
+    throw new Error("Custom element metadata's propertiesDriver type is " + ("invalid: `" + metadata.propertiesDriver.type + "`."));
   }
 }
 
@@ -15767,24 +15750,22 @@ function updateCustomElement(previous, element) {
     this.firstRootElem$.onNext(0);
     this.firstRootElem$.onCompleted();
   }
-  validatePropertiesDriverInMetadata(element, 'update()');
+  validatePropertiesDriverInMetadata(element, "update()");
 
-  //console.log(`%cupdate() ${element.className}`, 'color: #880088');
+  //console.log(`%cupdate() ${element.className}`, `color: #880088`)
   var propsDriver = element.cycleCustomElementMetadata.propertiesDriver;
   if (propsDriver.hasOwnProperty(ALL_PROPS)) {
     propsDriver[ALL_PROPS].onNext(this.properties);
   }
   for (var prop in propsDriver) {
-    if (propsDriver.hasOwnProperty(prop)) {
-      if (this.properties.hasOwnProperty(prop)) {
-        propsDriver[prop].onNext(this.properties[prop]);
-      }
+    if (propsDriver.hasOwnProperty(prop) && this.properties.hasOwnProperty(prop)) {
+      propsDriver[prop].onNext(this.properties[prop]);
     }
   }
 }
 
 function destroyCustomElement(element) {
-  //console.log(`%cdestroy() custom el ${element.className}`, 'color: #808');
+  //console.log(`%cdestroy() custom el ${element.className}`, `color: #808`)
   // Dispose propertiesDriver
   var propsDriver = element.cycleCustomElementMetadata.propertiesDriver;
   for (var prop in propsDriver) {
@@ -15802,8 +15783,8 @@ function destroyCustomElement(element) {
 }
 
 function makeWidgetClass(tagName, definitionFn) {
-  if (typeof definitionFn !== 'function') {
-    throw new Error('A custom element definition given to the DOM driver ' + 'should be a function.');
+  if (typeof definitionFn !== "function") {
+    throw new Error("A custom element definition given to the DOM driver " + "should be a function.");
   }
 
   var WidgetClass = makeConstructor();
@@ -15820,7 +15801,6 @@ module.exports = {
   subscribeDispatchersWhenRootChanges: subscribeDispatchersWhenRootChanges,
   makePropertiesDriver: makePropertiesDriver,
   createContainerElement: createContainerElement,
-  warnIfVTreeHasNoKey: warnIfVTreeHasNoKey,
   throwIfVTreeHasPropertyChildren: throwIfVTreeHasPropertyChildren,
   makeConstructor: makeConstructor,
   makeInit: makeInit,
@@ -15832,21 +15812,21 @@ module.exports = {
   makeWidgetClass: makeWidgetClass
 };
 
-},{"./render-dom":115,"@cycle/core":1}],113:[function(require,module,exports){
-'use strict';
+},{"./render-dom":112,"@cycle/core":1}],110:[function(require,module,exports){
+"use strict";
 
-var _require = require('./custom-element-widget');
+var _require = require("./custom-element-widget");
 
 var makeWidgetClass = _require.makeWidgetClass;
 
-var Map = Map || require('es6-map'); // eslint-disable-line no-native-reassign
+var Map = Map || require("es6-map"); // eslint-disable-line no-native-reassign
 
 function replaceCustomElementsWithSomething(vtree, registry, toSomethingFn) {
   // Silently ignore corner cases
   if (!vtree) {
     return vtree;
   }
-  var tagName = (vtree.tagName || '').toUpperCase();
+  var tagName = (vtree.tagName || "").toUpperCase();
   // Replace vtree itself
   if (tagName && registry.has(tagName)) {
     var WidgetClass = registry.get(tagName);
@@ -15876,20 +15856,22 @@ module.exports = {
   makeCustomElementsRegistry: makeCustomElementsRegistry
 };
 
-},{"./custom-element-widget":112,"es6-map":4}],114:[function(require,module,exports){
-'use strict';
-var VirtualDOM = require('virtual-dom');
-var svg = require('virtual-dom/virtual-hyperscript/svg');
+},{"./custom-element-widget":109,"es6-map":4}],111:[function(require,module,exports){
+"use strict";
 
-var _require = require('./render-dom');
+var svg = require("virtual-dom/virtual-hyperscript/svg");
+
+var _require = require("./render-dom");
 
 var makeDOMDriver = _require.makeDOMDriver;
 
-var _require2 = require('./render-html');
+var _require2 = require("./render-html");
 
 var makeHTMLDriver = _require2.makeHTMLDriver;
 
-var CycleWeb = {
+var h = require("./virtual-hyperscript");
+
+var CycleDOM = {
   /**
    * A factory for the DOM driver function. Takes a `container` to define the
    * target on the existing DOM which this driver will operate on. All custom
@@ -15905,7 +15887,7 @@ var CycleWeb = {
    * @param {Object} customElements a collection of custom element definitions.
    * The key of each property should be the tag name of the custom element, and
    * the value should be a function defining the implementation of the custom
-   * element. This function follows the same contract as the top-most `app`
+   * element. This function follows the same contract as the top-most `main`
    * function: input are driver responses, output are requests to drivers.
    * @return {Function} the DOM driver function. The function expects an
    * Observable of VTree as input, and outputs the response object for this
@@ -15924,7 +15906,7 @@ var CycleWeb = {
    * @param {Object} customElements a collection of custom element definitions.
    * The key of each property should be the tag name of the custom element, and
    * the value should be a function defining the implementation of the custom
-   * element. This function follows the same contract as the top-most `app`
+   * element. This function follows the same contract as the top-most `main`
    * function: input are driver responses, output are requests to drivers.
    * @return {Function} the HTML driver function. The function expects an
    * Observable of Virtual DOM elements as input, and outputs an Observable of
@@ -15939,7 +15921,24 @@ var CycleWeb = {
    * This is a helper for creating VTrees in Views.
    * @name h
    */
-  h: VirtualDOM.h,
+  h: h,
+
+  /**
+   * An adapter around virtual-hyperscript `h()` to allow JSX to be used easily
+   * with Babel. Place the [Babel configuration comment](
+   * http://babeljs.io/docs/advanced/transformers/other/react/) `@jsx hJSX` at
+   * the top of the ES6 file, make sure you import `hJSX` with
+   * `import {hJSX} from '@cycle/dom'`, and then you can use JSX to create
+   * VTrees.
+   * @name hJSX
+   */
+  hJSX: function hJSX(tag, attrs) {
+    for (var _len = arguments.length, children = Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      children[_key - 2] = arguments[_key];
+    }
+
+    return h(tag, attrs, children);
+  },
 
   /**
    * A shortcut to the svg hyperscript function.
@@ -15948,57 +15947,64 @@ var CycleWeb = {
   svg: svg
 };
 
-module.exports = CycleWeb;
+module.exports = CycleDOM;
 
-},{"./render-dom":115,"./render-html":116,"virtual-dom":78,"virtual-dom/virtual-hyperscript/svg":99}],115:[function(require,module,exports){
-'use strict';
+},{"./render-dom":112,"./render-html":113,"./virtual-hyperscript":115,"virtual-dom/virtual-hyperscript/svg":96}],112:[function(require,module,exports){
+"use strict";
 
-var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i['return']) _i['return'](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError('Invalid attempt to destructure non-iterable instance'); } }; })();
+var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })();
 
-var _require = require('@cycle/core');
+var _require = require("@cycle/core");
 
 var Rx = _require.Rx;
 
 var VDOM = {
-  h: require('virtual-dom').h,
-  diff: require('virtual-dom/diff'),
-  patch: require('virtual-dom/patch'),
-  parse: typeof window !== 'undefined' ? require('vdom-parser') : function () {}
+  h: require("./virtual-hyperscript"),
+  diff: require("virtual-dom/diff"),
+  patch: require("virtual-dom/patch"),
+  parse: typeof window !== "undefined" ? require("vdom-parser") : function () {}
 };
 
-var _require2 = require('./custom-elements');
+var _require2 = require("./custom-elements");
 
 var replaceCustomElementsWithSomething = _require2.replaceCustomElementsWithSomething;
 var makeCustomElementsRegistry = _require2.makeCustomElementsRegistry;
 
+var _require3 = require("./transposition");
+
+var transposeVTree = _require3.transposeVTree;
+
 function isElement(obj) {
-  return typeof HTMLElement === 'object' ? obj instanceof HTMLElement || obj instanceof DocumentFragment : //DOM2
-  obj && typeof obj === 'object' && obj !== null && (obj.nodeType === 1 || obj.nodeType === 11) && typeof obj.nodeName === 'string';
+  return typeof HTMLElement === "object" ? obj instanceof HTMLElement || obj instanceof DocumentFragment : //DOM2
+  obj && typeof obj === "object" && obj !== null && (obj.nodeType === 1 || obj.nodeType === 11) && typeof obj.nodeName === "string";
 }
 
 function fixRootElem$(rawRootElem$, domContainer) {
   // Create rootElem stream and automatic className correction
-  var originalClasses = (domContainer.className || '').trim().split(/\s+/);
+  var originalClasses = (domContainer.className || "").trim().split(/\s+/);
   var originalId = domContainer.id;
-  //console.log('%coriginalClasses: ' + originalClasses, 'color: lightgray');
+  //console.log('%coriginalClasses: ' + originalClasses, 'color: lightgray')
   return rawRootElem$.map(function fixRootElemClassNameAndId(rootElem) {
     var previousClasses = rootElem.className.trim().split(/\s+/);
     var missingClasses = originalClasses.filter(function (clss) {
       return previousClasses.indexOf(clss) < 0;
     });
+    var classes = previousClasses.length > 0 ? previousClasses.concat(missingClasses) : missingClasses;
     //console.log('%cfixRootElemClassName(), missingClasses: ' +
-    //  missingClasses, 'color: lightgray');
-    rootElem.className = previousClasses.concat(missingClasses).join(' ');
-    rootElem.id = originalId;
-    //console.log('%c  result: ' + rootElem.className, 'color: lightgray');
+    //  missingClasses, 'color: lightgray')
+    rootElem.className = classes.join(" ").trim();
+    if (originalId) {
+      rootElem.id = originalId;
+    }
+    //console.log('%c  result: ' + rootElem.className, 'color: lightgray')
     //console.log('%cEmit rootElem$ ' + rootElem.tagName + '.' +
-    //  rootElem.className, 'color: #009988');
+    //  rootElem.className, 'color: #009988')
     return rootElem;
   }).replay(null, 1);
 }
 
 function isVTreeCustomElement(vtree) {
-  return vtree.type === 'Widget' && vtree.isCustomElementWidget;
+  return vtree.type === "Widget" && vtree.isCustomElementWidget;
 }
 
 function makeReplaceCustomElementsWithWidgets(CERegistry, driverName) {
@@ -16010,7 +16016,7 @@ function makeReplaceCustomElementsWithWidgets(CERegistry, driverName) {
 }
 
 function getArrayOfAllWidgetFirstRootElem$(vtree) {
-  if (vtree.type === 'Widget' && vtree.firstRootElem$) {
+  if (vtree.type === "Widget" && vtree.firstRootElem$) {
     return [vtree.firstRootElem$];
   }
   // Or replace children recursively
@@ -16025,7 +16031,7 @@ function getArrayOfAllWidgetFirstRootElem$(vtree) {
 
 function checkRootVTreeNotCustomElement(vtree) {
   if (isVTreeCustomElement(vtree)) {
-    throw new Error('Illegal to use a Cycle custom element as the root of ' + 'a View.');
+    throw new Error("Illegal to use a Cycle custom element as the root of " + "a View.");
   }
 }
 
@@ -16039,18 +16045,24 @@ function wrapTopLevelVTree(vtree, rootElem) {
   }
 
   var _vtree$properties$id = vtree.properties.id;
-  var vtreeId = _vtree$properties$id === undefined ? '' : _vtree$properties$id;
+  var vtreeId = _vtree$properties$id === undefined ? "" : _vtree$properties$id;
   var _vtree$properties$className = vtree.properties.className;
-  var vtreeClass = _vtree$properties$className === undefined ? '' : _vtree$properties$className;
+  var vtreeClass = _vtree$properties$className === undefined ? "" : _vtree$properties$className;
 
   var sameId = vtreeId === rootElem.id;
   var sameClass = vtreeClass === rootElem.className;
   var sameTagName = vtree.tagName.toUpperCase() === rootElem.tagName;
   if (sameId && sameClass && sameTagName) {
     return vtree;
-  } else {
-    return VDOM.h(rootElem.tagName, { id: rootElem.id, className: rootElem.className }, [vtree]);
   }
+  var attrs = {};
+  if (rootElem.id) {
+    attrs.id = rootElem.id;
+  }
+  if (rootElem.className) {
+    attrs.className = rootElem.className;
+  }
+  return VDOM.h(rootElem.tagName, attrs, [vtree]);
 }
 
 function makeDiffAndPatchToElement$(rootElem) {
@@ -16060,41 +16072,43 @@ function makeDiffAndPatchToElement$(rootElem) {
     var oldVTree = _ref2[0];
     var newVTree = _ref2[1];
 
-    if (typeof newVTree === 'undefined') {
+    if (typeof newVTree === "undefined") {
       return Rx.Observable.empty();
     }
 
-    //let isCustomElement = isRootForCustomElement(rootElem);
-    //let k = isCustomElement ? ' is custom element ' : ' is top level';
+    //let isCustomElement = isRootForCustomElement(rootElem)
+    //let k = isCustomElement ? ' is custom element ' : ' is top level'
     var prevVTree = wrapTopLevelVTree(oldVTree, rootElem);
     var nextVTree = wrapTopLevelVTree(newVTree, rootElem);
     var waitForChildrenStreams = getArrayOfAllWidgetFirstRootElem$(nextVTree);
     var rootElemAfterChildrenFirstRootElem$ = Rx.Observable.combineLatest(waitForChildrenStreams, function () {
-      //console.log('%crawRootElem$ emits. (1)' + k, 'color: #008800');
+      //console.log('%crawRootElem$ emits. (1)' + k, 'color: #008800')
       return rootElem;
     });
     var cycleCustomElementMetadata = rootElem.cycleCustomElementMetadata;
-    //console.log('%cVDOM diff and patch START' + k, 'color: #636300');
+    //console.log('%cVDOM diff and patch START' + k, 'color: #636300')
     /* eslint-disable */
     rootElem = VDOM.patch(rootElem, VDOM.diff(prevVTree, nextVTree));
     /* eslint-enable */
-    //console.log('%cVDOM diff and patch END' + k, 'color: #636300');
+    //console.log('%cVDOM diff and patch END' + k, 'color: #636300')
     if (cycleCustomElementMetadata) {
       rootElem.cycleCustomElementMetadata = cycleCustomElementMetadata;
     }
     if (waitForChildrenStreams.length === 0) {
-      //console.log('%crawRootElem$ emits. (2)' + k, 'color: #008800');
+      //console.log('%crawRootElem$ emits. (2)' + k, 'color: #008800')
       return Rx.Observable.just(rootElem);
-    } else {
-      //console.log('%crawRootElem$ waiting children.' + k, 'color: #008800');
-      return rootElemAfterChildrenFirstRootElem$;
     }
+    //console.log('%crawRootElem$ waiting children.' + k, 'color: #008800')
+    return rootElemAfterChildrenFirstRootElem$;
   };
 }
 
-function renderRawRootElem$(vtree$, domContainer, CERegistry, driverName) {
+function renderRawRootElem$(vtree$, domContainer, _ref3) {
+  var CERegistry = _ref3.CERegistry;
+  var driverName = _ref3.driverName;
+
   var diffAndPatchToElement$ = makeDiffAndPatchToElement$(domContainer);
-  return vtree$.startWith(VDOM.parse(domContainer)).map(makeReplaceCustomElementsWithWidgets(CERegistry, driverName)).doOnNext(checkRootVTreeNotCustomElement).pairwise().flatMap(diffAndPatchToElement$);
+  return vtree$.flatMapLatest(transposeVTree).startWith(VDOM.parse(domContainer)).map(makeReplaceCustomElementsWithWidgets(CERegistry, driverName)).doOnNext(checkRootVTreeNotCustomElement).pairwise().flatMap(diffAndPatchToElement$);
 }
 
 function makeRootElemToEvent$(selector, eventName) {
@@ -16102,55 +16116,54 @@ function makeRootElemToEvent$(selector, eventName) {
     if (!rootElem) {
       return Rx.Observable.empty();
     }
-    //let isCustomElement = !!rootElem.cycleCustomElementMetadata;
+    //let isCustomElement = !!rootElem.cycleCustomElementMetadata
     //console.log(`%cget('${selector}', '${eventName}') flatMapper` +
     //  (isCustomElement ? ' for a custom element' : ' for top-level View'),
-    //  'color: #0000BB');
-    var klass = selector.replace('.', '');
-    if (rootElem.className.search(new RegExp('\\b' + klass + '\\b')) >= 0) {
-      //console.log('%c  Good return. (A)', 'color:#0000BB');
-      //console.log(rootElem);
+    //  'color: #0000BB')
+    var klass = selector.replace(".", "");
+    if (rootElem.className.search(new RegExp("\\b" + klass + "\\b")) >= 0) {
+      //console.log('%c  Good return. (A)', 'color:#0000BB')
+      //console.log(rootElem)
       return Rx.Observable.fromEvent(rootElem, eventName);
     }
     var targetElements = rootElem.querySelectorAll(selector);
     if (targetElements && targetElements.length > 0) {
-      //console.log('%c  Good return. (B)', 'color:#0000BB');
-      //console.log(targetElements);
+      //console.log('%c  Good return. (B)', 'color:#0000BB')
+      //console.log(targetElements)
       return Rx.Observable.fromEvent(targetElements, eventName);
-    } else {
-      //console.log('%c  returning empty!', 'color: #0000BB');
-      return Rx.Observable.empty();
     }
+    //console.log('%c  returning empty!', 'color: #0000BB')
+    return Rx.Observable.empty();
   };
 }
 
 function makeResponseGetter(rootElem$) {
   return function get(selector, eventName) {
-    if (typeof selector !== 'string') {
-      throw new Error('DOM driver\'s get() expects first argument to be a ' + 'string as a CSS selector');
+    if (typeof selector !== "string") {
+      throw new Error("DOM driver's get() expects first argument to be a " + "string as a CSS selector");
     }
-    if (selector.trim() === ':root') {
+    if (selector.trim() === ":root") {
       return rootElem$;
     }
-    if (typeof eventName !== 'string') {
-      throw new Error('DOM driver\'s get() expects second argument to be a ' + 'string representing the event type to listen for.');
+    if (typeof eventName !== "string") {
+      throw new Error("DOM driver's get() expects second argument to be a " + "string representing the event type to listen for.");
     }
 
-    //console.log(`%cget("${selector}", "${eventName}")`, 'color: #0000BB');
+    //console.log(`%cget("${selector}", "${eventName}")`, 'color: #0000BB')
     return rootElem$.flatMapLatest(makeRootElemToEvent$(selector, eventName)).share();
   };
 }
 
 function validateDOMDriverInput(vtree$) {
-  if (!vtree$ || typeof vtree$.subscribe !== 'function') {
-    throw new Error('The DOM driver function expects as input an ' + 'Observable of virtual DOM elements');
+  if (!vtree$ || typeof vtree$.subscribe !== "function") {
+    throw new Error("The DOM driver function expects as input an " + "Observable of virtual DOM elements");
   }
 }
 
 function makeDOMDriverWithRegistry(container, CERegistry) {
   return function domDriver(vtree$, driverName) {
     validateDOMDriverInput(vtree$);
-    var rawRootElem$ = renderRawRootElem$(vtree$, container, CERegistry, driverName);
+    var rawRootElem$ = renderRawRootElem$(vtree$, container, { CERegistry: CERegistry, driverName: driverName });
     if (!isRootForCustomElement(container)) {
       rawRootElem$ = rawRootElem$.startWith(container);
     }
@@ -16164,15 +16177,15 @@ function makeDOMDriverWithRegistry(container, CERegistry) {
 }
 
 function makeDOMDriver(container) {
-  var customElementDefinitions = arguments[1] === undefined ? {} : arguments[1];
+  var customElementDefinitions = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
   // Find and prepare the container
-  var domContainer = typeof container === 'string' ? document.querySelector(container) : container;
+  var domContainer = typeof container === "string" ? document.querySelector(container) : container;
   // Check pre-conditions
-  if (typeof container === 'string' && domContainer === null) {
-    throw new Error('Cannot render into unknown element \'' + container + '\'');
+  if (typeof container === "string" && domContainer === null) {
+    throw new Error("Cannot render into unknown element `" + container + "`");
   } else if (!isElement(domContainer)) {
-    throw new Error('Given container is not a DOM element neither a selector ' + 'string.');
+    throw new Error("Given container is not a DOM element neither a selector " + "string.");
   }
 
   var registry = makeCustomElementsRegistry(customElementDefinitions);
@@ -16197,24 +16210,28 @@ module.exports = {
   makeDOMDriver: makeDOMDriver
 };
 
-},{"./custom-elements":113,"@cycle/core":1,"vdom-parser":60,"virtual-dom":78,"virtual-dom/diff":76,"virtual-dom/patch":86}],116:[function(require,module,exports){
-'use strict';
+},{"./custom-elements":110,"./transposition":114,"./virtual-hyperscript":115,"@cycle/core":1,"vdom-parser":60,"virtual-dom/diff":75,"virtual-dom/patch":83}],113:[function(require,module,exports){
+"use strict";
 
-var _require = require('@cycle/core');
+var _require = require("@cycle/core");
 
 var Rx = _require.Rx;
 
-var toHTML = require('vdom-to-html');
+var toHTML = require("vdom-to-html");
 
-var _require2 = require('./custom-elements');
+var _require2 = require("./custom-elements");
 
 var replaceCustomElementsWithSomething = _require2.replaceCustomElementsWithSomething;
 var makeCustomElementsRegistry = _require2.makeCustomElementsRegistry;
 
-var _require3 = require('./custom-element-widget');
+var _require3 = require("./custom-element-widget");
 
 var makeCustomElementInput = _require3.makeCustomElementInput;
 var ALL_PROPS = _require3.ALL_PROPS;
+
+var _require4 = require("./transposition");
+
+var transposeVTree = _require4.transposeVTree;
 
 function makePropertiesDriverFromVTree(vtree) {
   return {
@@ -16226,31 +16243,6 @@ function makePropertiesDriverFromVTree(vtree) {
       }
     }
   };
-}
-
-/**
- * Converts a tree of VirtualNode|Observable<VirtualNode> into
- * Observable<VirtualNode>.
- */
-function transposeVTree(vtree) {
-  if (typeof vtree.subscribe === 'function') {
-    return vtree;
-  } else if (vtree.type === 'VirtualText') {
-    return Rx.Observable.just(vtree);
-  } else if (vtree.type === 'VirtualNode' && Array.isArray(vtree.children) && vtree.children.length > 0) {
-    return Rx.Observable.combineLatest(vtree.children.map(transposeVTree), function () {
-      for (var _len = arguments.length, arr = Array(_len), _key = 0; _key < _len; _key++) {
-        arr[_key] = arguments[_key];
-      }
-
-      vtree.children = arr;
-      return vtree;
-    });
-  } else if (vtree.type === 'VirtualNode') {
-    return Rx.Observable.just(vtree);
-  } else {
-    throw new Error('Unhandled case in transposeVTree()');
-  }
 }
 
 function makeReplaceCustomElementsWithVTree$(CERegistry, driverName) {
@@ -16276,7 +16268,7 @@ function convertCustomElementsToVTree(vtree$, CERegistry, driverName) {
 
 function makeResponseGetter() {
   return function get(selector) {
-    if (selector === ':root') {
+    if (selector === ":root") {
       return this;
     } else {
       return Rx.Observable.empty();
@@ -16285,7 +16277,7 @@ function makeResponseGetter() {
 }
 
 function makeHTMLDriver() {
-  var customElementDefinitions = arguments[0] === undefined ? {} : arguments[0];
+  var customElementDefinitions = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
   var registry = makeCustomElementsRegistry(customElementDefinitions);
   return function htmlDriver(vtree$, driverName) {
@@ -16306,5 +16298,176 @@ module.exports = {
   makeHTMLDriver: makeHTMLDriver
 };
 
-},{"./custom-element-widget":112,"./custom-elements":113,"@cycle/core":1,"vdom-to-html":64}]},{},[114])(114)
+},{"./custom-element-widget":109,"./custom-elements":110,"./transposition":114,"@cycle/core":1,"vdom-to-html":64}],114:[function(require,module,exports){
+"use strict";
+
+var _require = require("@cycle/core");
+
+var Rx = _require.Rx;
+
+var VirtualNode = require("virtual-dom/vnode/vnode");
+
+/**
+ * Converts a tree of VirtualNode|Observable<VirtualNode> into
+ * Observable<VirtualNode>.
+ */
+function transposeVTree(vtree) {
+  if (typeof vtree.subscribe === "function") {
+    return vtree.flatMap(transposeVTree);
+  } else if (vtree.type === "VirtualText") {
+    return Rx.Observable.just(vtree);
+  } else if (vtree.type === "VirtualNode" && Array.isArray(vtree.children) && vtree.children.length > 0) {
+    return Rx.Observable.combineLatest(vtree.children.map(transposeVTree), function () {
+      for (var _len = arguments.length, arr = Array(_len), _key = 0; _key < _len; _key++) {
+        arr[_key] = arguments[_key];
+      }
+
+      return new VirtualNode(vtree.tagName, vtree.properties, arr, vtree.key, vtree.namespace);
+    });
+  } else if (vtree.type === "VirtualNode") {
+    return Rx.Observable.just(vtree);
+  } else {
+    throw new Error("Unhandled case in transposeVTree()");
+  }
+}
+
+module.exports = {
+  transposeVTree: transposeVTree
+};
+
+},{"@cycle/core":1,"virtual-dom/vnode/vnode":104}],115:[function(require,module,exports){
+/* eslint-disable */
+'use strict';
+
+var isArray = require('virtual-dom/node_modules/x-is-array');
+
+var VNode = require('virtual-dom/vnode/vnode.js');
+var VText = require('virtual-dom/vnode/vtext.js');
+var isVNode = require('virtual-dom/vnode/is-vnode');
+var isVText = require('virtual-dom/vnode/is-vtext');
+var isWidget = require('virtual-dom/vnode/is-widget');
+var isHook = require('virtual-dom/vnode/is-vhook');
+var isVThunk = require('virtual-dom/vnode/is-thunk');
+
+var parseTag = require('virtual-dom/virtual-hyperscript/parse-tag.js');
+var softSetHook = require('virtual-dom/virtual-hyperscript/hooks/soft-set-hook.js');
+var evHook = require('virtual-dom/virtual-hyperscript/hooks/ev-hook.js');
+
+module.exports = h;
+
+function h(tagName, properties, children) {
+  var childNodes = [];
+  var tag, props, key, namespace;
+
+  if (!children && isChildren(properties)) {
+    children = properties;
+    props = {};
+  }
+
+  props = props || properties || {};
+  tag = parseTag(tagName, props);
+
+  // support keys
+  if (props.hasOwnProperty('key')) {
+    key = props.key;
+    props.key = undefined;
+  }
+
+  // support namespace
+  if (props.hasOwnProperty('namespace')) {
+    namespace = props.namespace;
+    props.namespace = undefined;
+  }
+
+  // fix cursor bug
+  if (tag === 'INPUT' && !namespace && props.hasOwnProperty('value') && props.value !== undefined && !isHook(props.value)) {
+    props.value = softSetHook(props.value);
+  }
+
+  transformProperties(props);
+
+  if (children !== undefined && children !== null) {
+    addChild(children, childNodes, tag, props);
+  }
+
+  return new VNode(tag, props, childNodes, key, namespace);
+}
+
+function addChild(c, childNodes, tag, props) {
+  if (typeof c === 'string') {
+    childNodes.push(new VText(c));
+  } else if (typeof c === 'number') {
+    childNodes.push(new VText(String(c)));
+  } else if (isChild(c)) {
+    childNodes.push(c);
+  } else if (isArray(c)) {
+    for (var i = 0; i < c.length; i++) {
+      addChild(c[i], childNodes, tag, props);
+    }
+  } else if (c === null || c === undefined) {
+    return;
+  } else {
+    throw UnexpectedVirtualElement({
+      foreignObject: c,
+      parentVnode: {
+        tagName: tag,
+        properties: props
+      }
+    });
+  }
+}
+
+function transformProperties(props) {
+  for (var propName in props) {
+    if (props.hasOwnProperty(propName)) {
+      var value = props[propName];
+
+      if (isHook(value)) {
+        continue;
+      }
+
+      if (propName.substr(0, 3) === 'ev-') {
+        // add ev-foo support
+        props[propName] = evHook(value);
+      }
+    }
+  }
+}
+
+// START Cycle.js-specific code >>>>>>>>
+function isObservable(x) {
+  return x && typeof x.subscribe === 'function';
+}
+
+function isChild(x) {
+  return isVNode(x) || isVText(x) || isObservable(x) || isWidget(x) || isVThunk(x);
+}
+// END Cycle.js-specific code <<<<<<<<<<
+
+function isChildren(x) {
+  return typeof x === 'string' || isArray(x) || isChild(x);
+}
+
+function UnexpectedVirtualElement(data) {
+  var err = new Error();
+
+  err.type = 'virtual-hyperscript.unexpected.virtual-element';
+  err.message = 'Unexpected virtual child passed to h().\n' + 'Expected a VNode / Vthunk / VWidget / string but:\n' + 'got:\n' + errorString(data.foreignObject) + '.\n' + 'The parent vnode is:\n' + errorString(data.parentVnode);
+  '\n' + 'Suggested fix: change your `h(..., [ ... ])` callsite.';
+  err.foreignObject = data.foreignObject;
+  err.parentVnode = data.parentVnode;
+
+  return err;
+}
+
+function errorString(obj) {
+  try {
+    return JSON.stringify(obj, null, '    ');
+  } catch (e) {
+    return String(obj);
+  }
+}
+/* eslint-enable */
+
+},{"virtual-dom/node_modules/x-is-array":82,"virtual-dom/virtual-hyperscript/hooks/ev-hook.js":91,"virtual-dom/virtual-hyperscript/hooks/soft-set-hook.js":92,"virtual-dom/virtual-hyperscript/parse-tag.js":94,"virtual-dom/vnode/is-thunk":98,"virtual-dom/vnode/is-vhook":99,"virtual-dom/vnode/is-vnode":100,"virtual-dom/vnode/is-vtext":101,"virtual-dom/vnode/is-widget":102,"virtual-dom/vnode/vnode.js":104,"virtual-dom/vnode/vtext.js":106}]},{},[111])(111)
 });

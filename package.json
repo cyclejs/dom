@@ -1,14 +1,14 @@
 {
-  "name": "@cycle/web",
-  "version": "2.1.1",
+  "name": "@cycle/dom",
+  "version": "3.2.2",
   "author": "Andre Staltz",
   "description": "The standard DOM Driver for Cycle.js, based on virtual-dom, and other helpers",
   "license": "MIT",
-  "homepage": "https://github.com/cyclejs/cycle-web",
-  "bugs": "https://github.com/cyclejs/cycle-web/issues",
+  "homepage": "https://github.com/cyclejs/cycle-dom",
+  "bugs": "https://github.com/cyclejs/cycle-dom/issues",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cyclejs/cycle-web"
+    "url": "https://github.com/cyclejs/cycle-dom"
   },
   "keywords": [
     "reactive",
@@ -19,29 +19,31 @@
     "mvi",
     "virtual-dom"
   ],
-  "main": "lib/cycle-web.js",
+  "main": "lib/cycle-dom.js",
   "dependencies": {
     "es6-map": "0.1.1",
     "vdom-parser": "^1.0.2",
     "vdom-to-html": "^2.0.0",
-    "virtual-dom": "2.0.1"
+    "virtual-dom": "2.1.0"
   },
   "peerDependencies": {
     "@cycle/core": "1.0.x"
   },
   "devDependencies": {
     "@cycle/core": "1.0.x",
-    "rx": "2.x.x",
-    "babel": "5.6.x",
+    "babel": "5.8.x",
     "babelify": "6.1.x",
-    "eslint": "^0.23.0",
-    "eslint-config-cycle": "1.0.x",
+    "browserify": "11.0.0",
+    "eslint": "1.0.x",
+    "eslint-config-cycle": "3.0.x",
     "eslint-plugin-cycle": "1.0.x",
-    "browserify": "10.2.4",
-    "markdox": "0.1.8",
+    "eslint-plugin-no-class": "^0.1.0",
+    "markdox": "0.1.x",
     "mocha": "2.2.5",
-    "testem": "0.8.3",
-    "uglify-js": "2.4.23"
+    "rx": "2.x.x",
+    "testem": "0.9.1",
+    "uglify-js": "2.4.24",
+    "zuul": "^3.2.0"
   },
   "engines": {
     "node": ">=0.10.0"
@@ -50,12 +52,13 @@
     "eslint": "eslint src/",
     "test-node": "mocha --compilers js:babel/register test/node",
     "test-browser": "testem",
+    "test-zuul": "zuul --open --no-coverage --local 4000 -- test/browser/index.js",
     "pretest-browser": "browserify test/browser/index.js -t babelify -o test/browser/page/tests-bundle.js",
     "posttest-browser": "rm test/browser/page/tests-bundle.js",
     "test": "npm run eslint && npm run test-node && npm run test-browser",
-    "travis-test": "npm run eslint && npm run test-node",
-    "browserify": "browserify src/cycle-web.js -t babelify --standalone CycleWeb --outfile dist/cycle-web.js",
-    "uglify": "uglifyjs dist/cycle-web.js -o dist/cycle-web.min.js",
+    "test-ci": "npm run eslint && npm run test-node && zuul --no-coverage -- test/browser/index.js",
+    "browserify": "browserify src/cycle-dom.js -t babelify --standalone CycleDOM --outfile dist/cycle-dom.js",
+    "uglify": "uglifyjs dist/cycle-dom.js -o dist/cycle-dom.min.js",
     "dist": "npm run browserify && npm run uglify",
     "docs": "node ./scripts/make-api-docs.js",
     "precompile-lib": "rm -rf lib/ && mkdir -p lib",
