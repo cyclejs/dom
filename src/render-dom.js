@@ -27,16 +27,17 @@ function isElement(obj) {
 
 function fixRootElem$(rawRootElem$, domContainer) {
   // Create rootElem stream and automatic className correction
-  let originalClasses = (domContainer.className || domContainer.className
-    || domContainer.className.baseVal || ``).trim().split(/\s+/);
+  let originalClasses = (domContainer.className || domContainer.className ||
+    domContainer.className.baseVal || ``).trim().split(/\s+/)
   let originalId = domContainer.id
   //console.log('%coriginalClasses: ' + originalClasses, 'color: lightgray')
   return rawRootElem$
     .map(function fixRootElemClassNameAndId(rootElem) {
-      let fixedRootClassName = null, svg = false
-      if (typeof(rootElem.className) == `string`) {
+      let fixedRootClassName = null
+      let svg = false
+      if (typeof rootElem.className === `string`) {
         fixedRootClassName = rootElem.className
-      } else if (typeof(rootElem.className.baseVal) == `string`) {
+      } else if (typeof rootElem.className.baseVal  === `string`) {
         fixedRootClassName = rootElem.className.baseVal
         svg = true
       }
