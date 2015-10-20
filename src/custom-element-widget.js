@@ -1,4 +1,4 @@
-let Rx = require(`rx`)
+let Rx = require(`@reactivex/rxjs`)
 const ALL_PROPS = `*`
 const PROPS_DRIVER_NAME = `props`
 const EVENTS_SINK_NAME = `events`

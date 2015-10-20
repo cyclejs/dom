@@ -3,14 +3,14 @@
 let assert = require('assert');
 let Cycle = require('@cycle/core');
 let CycleDOM = require('../../src/cycle-dom');
-let Rx = require('rx');
+let Rx = require('@reactivex/rxjs');
 let {h, makeHTMLDriver} = CycleDOM;
 
 describe('HTML Driver', function () {
   it('should output HTML when given a simple vtree stream', function (done) {
     function app() {
       return {
-        html: Rx.Observable.just(h('div.test-element', ['Foobar']))
+        html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -28,7 +28,7 @@ describe('HTML Driver', function () {
       assert.strictEqual(typeof html.select('whatever').observable.subscribe, 'function');
       assert.strictEqual(typeof html.select('whatever').events().subscribe, 'function');
       return {
-        html: Rx.Observable.just(h('div.test-element', ['Foobar']))
+        html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -43,7 +43,7 @@ describe('HTML Driver', function () {
   it('should output simple HTML Observable at `.get(\':root\')`', function (done) {
     function app() {
       return {
-        html: Rx.Observable.just(h('div.test-element', ['Foobar']))
+        html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -58,12 +58,12 @@ describe('HTML Driver', function () {
   it('should render a simple nested custom element as HTML', function (done) {
     function myElement() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass'))
+        DOM: Rx.Observable.of(h('h3.myelementclass'))
       };
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.test-element', [h('my-element')]))
+        DOM: Rx.Observable.of(h('div.test-element', [h('my-element')]))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -82,19 +82,19 @@ describe('HTML Driver', function () {
   it('should render double nested custom elements as HTML', function (done) {
     function myElement() {
       return {
-        html: Rx.Observable.just(h('h3.myelementclass'))
+        html: Rx.Observable.of(h('h3.myelementclass'))
       };
     }
     function niceElement() {
       return {
-        html: Rx.Observable.just(h('div.a-nice-element', [
+        html: Rx.Observable.of(h('div.a-nice-element', [
           String('foobar'), h('my-element')
         ]))
       };
     }
     function app() {
       return {
-        html: Rx.Observable.just(h('div.test-element', [h('nice-element')]))
+        html: Rx.Observable.of(h('div.test-element', [h('nice-element')]))
       };
     }
     let customElements = {
@@ -126,7 +126,7 @@ describe('HTML Driver', function () {
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div.test-element', [
             h('my-element', {foobar: 'yes'})
           ])
@@ -156,7 +156,7 @@ describe('HTML Driver', function () {
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div.test-element', [
             h('my-element', {foobar: 'yes'})
           ])
@@ -180,17 +180,17 @@ describe('HTML Driver', function () {
   it('should render a complex custom element tree as HTML', function (done) {
     function xFoo() {
       return {
-        html: Rx.Observable.just(h('h1.fooclass'))
+        html: Rx.Observable.of(h('h1.fooclass'))
       };
     }
     function xBar() {
       return {
-        html: Rx.Observable.just(h('h2.barclass'))
+        html: Rx.Observable.of(h('h2.barclass'))
       };
     }
     function app() {
       return {
-        html: Rx.Observable.just(
+        html: Rx.Observable.of(
           h('.test-element', [
             h('div', [
               h('h2.a', 'a'),

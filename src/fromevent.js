@@ -1,7 +1,6 @@
-let Rx = require(`rx`)
+let Rx = require(`@reactivex/rxjs`)
 
-const disposableCreate = Rx.Disposable.create
-const CompositeDisposable = Rx.CompositeDisposable
+const disposableCreate = (func) => new Rx.Subscription(func)
 const AnonymousObservable = Rx.AnonymousObservable
 
 function createListener({element, eventName, handler, useCapture}) {
@@ -15,7 +14,7 @@ function createListener({element, eventName, handler, useCapture}) {
 }
 
 function createEventListener({element, eventName, handler, useCapture}) {
-  const disposables = new CompositeDisposable()
+  const disposables = new Rx.Subscription()
 
   const toStr = Object.prototype.toString
   if (toStr.call(element) === `[object NodeList]` ||

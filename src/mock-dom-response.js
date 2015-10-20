@@ -1,4 +1,4 @@
-import Rx from 'rx'
+const Rx = require(`@reactivex/rxjs`)
 
 const emptyStream = Rx.Observable.empty()
 

@@ -1,7 +1,7 @@
 'use strict';
 let Cycle = require('@cycle/core');
 let CycleDOM = require('../../../src/cycle-dom');
-let Rx = require('rx');
+let Rx = require('@reactivex/rxjs');
 let {h} = CycleDOM;
 
 function myElement(ext) {
@@ -13,8 +13,8 @@ function myElement(ext) {
 
 function makeModelNumber$() {
   return Rx.Observable.merge(
-    Rx.Observable.just(123).delay(50),
-    Rx.Observable.just(456).delay(400)
+    Rx.Observable.of(123).delay(50),
+    Rx.Observable.of(456).delay(400)
   );
 }
 

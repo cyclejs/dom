@@ -1,4 +1,4 @@
-let Rx = require(`rx`)
+let Rx = require('@reactivex/rxjs')
 let toHTML = require(`vdom-to-html`)
 let {replaceCustomElementsWithSomething, makeCustomElementsRegistry} =
   require(`./custom-elements`)
@@ -9,9 +9,9 @@ function makePropertiesDriverFromVTree(vtree) {
   return {
     get: (propertyName) => {
       if (propertyName === ALL_PROPS) {
-        return Rx.Observable.just(vtree.properties)
+        return Rx.Observable.of(vtree.properties)
       } else {
-        return Rx.Observable.just(vtree.properties[propertyName])
+        return Rx.Observable.of(vtree.properties[propertyName])
       }
     },
   }

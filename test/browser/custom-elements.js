@@ -3,7 +3,7 @@
 let assert = require('assert');
 let Cycle = require('@cycle/core');
 let CycleDOM = require('../../src/cycle-dom');
-let Rx = require('rx');
+let Rx = require('@reactivex/rxjs');
 let {h, svg, makeDOMDriver} = CycleDOM;
 
 function createRenderTarget() {
@@ -34,13 +34,13 @@ describe('Custom Elements', function () {
     // Make simple custom element
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass'))
+        DOM: Rx.Observable.of(h('h3.myelementclass'))
       };
     }
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.toplevel', [h('my-element', {key: 1})]))
+        DOM: Rx.Observable.of(h('div.toplevel', [h('my-element', {key: 1})]))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -74,7 +74,7 @@ describe('Custom Elements', function () {
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just('#00FF00').delay(50)
+        DOM: Rx.Observable.of('#00FF00').delay(50)
           .startWith('#FF0000')
           .map(color =>
             h('div', [
@@ -124,7 +124,7 @@ describe('Custom Elements', function () {
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div', [
             h('my-element', {color: '#FF0000', content: 'Hello world'})
           ])
@@ -167,7 +167,7 @@ describe('Custom Elements', function () {
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div', [
             h('my-element', {color: '#FF0000', content: 'Hello world'})
           ])
@@ -206,7 +206,7 @@ describe('Custom Elements', function () {
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div', [
             h('my-element', {color: '#FF0000', content: 'Hello world'})
           ])
@@ -249,7 +249,7 @@ describe('Custom Elements', function () {
     // Use the custom elements
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('section', [
             h('work-space', {width: 500, height: 500}, [
               h('work-space', {width: 100, height: 100})
@@ -276,19 +276,19 @@ describe('Custom Elements', function () {
     // Make the first custom element
     function myElementDef1() {
       return {
-        DOM: Rx.Observable.just(h('h1.myelement1class'))
+        DOM: Rx.Observable.of(h('h1.myelement1class'))
       };
     }
     // Make the second custom element
     function myElementDef2() {
       return {
-        DOM: Rx.Observable.just(h('h2.myelement2class'))
+        DOM: Rx.Observable.of(h('h2.myelement2class'))
       };
     }
     // Use the custom elements
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div', [
             h('my-element1'), h('my-element2')
           ])
@@ -320,13 +320,13 @@ describe('Custom Elements', function () {
     // Make the inner custom element
     function innerElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.innerClass'))
+        DOM: Rx.Observable.of(h('h3.innerClass'))
       };
     }
     // Make the outer custom element
     function outerElementDef() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div.outerClass', [
             h('inner-element', {key: 1})
           ])
@@ -336,7 +336,7 @@ describe('Custom Elements', function () {
     // Use the custom elements
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div', [h('outer-element', {key: 2})]))
+        DOM: Rx.Observable.of(h('div', [h('outer-element', {key: 2})]))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -359,13 +359,13 @@ describe('Custom Elements', function () {
   it('should not render unwanted empty ids in elements', function (done) {
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass', 'Hello world'))
+        DOM: Rx.Observable.of(h('h3.myelementclass', 'Hello world'))
       };
     }
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.toplevel', [h('my-element', {key: 1})]))
+        DOM: Rx.Observable.of(h('div.toplevel', [h('my-element', {key: 1})]))
       };
     }
     let [requests, responses] = Cycle.run(app, {
@@ -392,7 +392,7 @@ describe('Custom Elements', function () {
   it('should not render unwanted leading spaces in className', function (done) {
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('button', [
             h('p', "Some content")
           ])
@@ -444,7 +444,7 @@ describe('Custom Elements', function () {
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div.toplevel', [
             h('p', 'Before'),
             h('my-element', {key: 1, content: 'Hello World'}),
@@ -475,16 +475,16 @@ describe('Custom Elements', function () {
     // Make simple custom element
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass', 'foobar')),
+        DOM: Rx.Observable.of(h('h3.myelementclass', 'foobar')),
         events: {
-          myevent: Rx.Observable.just(123).delay(300)
+          myevent: Rx.Observable.of(123).delay(300)
         }
       };
     }
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.toplevel', [
+        DOM: Rx.Observable.of(h('div.toplevel', [
           h('my-element.eventsource', {key: 1})
         ]))
       };
@@ -516,13 +516,13 @@ describe('Custom Elements', function () {
     // Make simple custom element
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass'))
+        DOM: Rx.Observable.of(h('h3.myelementclass'))
       };
     }
     // Make VNode with a string as child
     function app() {
       return {
-        DOM: Rx.Observable.just(h('h1', 'This will be a VirtualText'))
+        DOM: Rx.Observable.of(h('h1', 'This will be a VirtualText'))
       };
     }
     // Make assertions
@@ -558,8 +558,8 @@ describe('Custom Elements', function () {
       return {
         DOM: Rx.Observable
           .merge(
-            Rx.Observable.just([{id: 23}]),
-            Rx.Observable.just([{id: 23}, {id: 45}]).delay(50),
+            Rx.Observable.of([{id: 23}]),
+            Rx.Observable.of([{id: 23}, {id: 45}]).delay(50),
             ext.DOM.select('.slider').events('remove').map(event => event.detail)
           )
           .scan((items, x) => {
@@ -608,7 +608,7 @@ describe('Custom Elements', function () {
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.toplevel', [
+        DOM: Rx.Observable.of(h('div.toplevel', [
           h('simple-wrapper', [
             h('h1', 'Hello'), h('h2', 'World')
           ])
@@ -635,13 +635,13 @@ describe('Custom Elements', function () {
     // Make simple custom element
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass'))
+        DOM: Rx.Observable.of(h('h3.myelementclass'))
       };
     }
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.toplevel', [
+        DOM: Rx.Observable.of(h('div.toplevel', [
           h('my-element', {children: 123})
         ]))
       };
@@ -717,18 +717,18 @@ describe('Custom Elements', function () {
       // be emitted on <button> and not from the original <h3>.
       return {
         DOM: Rx.Observable.merge(
-          Rx.Observable.just(h('h3.myelementclass', 'foo')),
-          Rx.Observable.just(h('button.myelementclass', 'bar')).delay(50)
+          Rx.Observable.of(h('h3.myelementclass', 'foo')),
+          Rx.Observable.of(h('button.myelementclass', 'bar')).delay(50)
         ),
         events: {
-          myevent: Rx.Observable.just(123).delay(300)
+          myevent: Rx.Observable.of(123).delay(300)
         }
       };
     }
     // Use the custom element
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div.toplevel', [
             h('my-element.eventsource', {key: 1})
           ])
@@ -811,7 +811,7 @@ describe('Custom Elements', function () {
     // Make simple custom element
     function myElementDef() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass')),
+        DOM: Rx.Observable.of(h('h3.myelementclass')),
         events: {
           myevent: number$.do(i => log.push(i))
         }

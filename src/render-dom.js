@@ -1,4 +1,4 @@
-let Rx = require(`rx`)
+let Rx = require(`@reactivex/rxjs`)
 let fromEvent = require(`./fromevent`)
 let VDOM = {
   h: require(`./virtual-hyperscript`),
@@ -144,7 +144,7 @@ function makeDiffAndPatchToElement$(rootElem) {
     }
     if (waitForChildrenStreams.length === 0) {
       //console.log('%crawRootElem$ emits. (2)' + k, 'color: #008800')
-      return Rx.Observable.just(rootElem)
+      return Rx.Observable.of(rootElem)
     }
     //console.log('%crawRootElem$ waiting children.' + k, 'color: #008800')
     return rootElemAfterChildrenFirstRootElem$
@@ -154,12 +154,12 @@ function makeDiffAndPatchToElement$(rootElem) {
 function renderRawRootElem$(vtree$, domContainer, {CERegistry, driverName}) {
   let diffAndPatchToElement$ = makeDiffAndPatchToElement$(domContainer)
   return vtree$
-    .flatMapLatest(transposeVTree)
+    .switchMap(transposeVTree)
     .startWith(VDOM.parse(domContainer))
     .map(makeReplaceCustomElementsWithWidgets(CERegistry, driverName))
-    .doOnNext(checkRootVTreeNotCustomElement)
-    .pairwise()
-    .flatMap(diffAndPatchToElement$)
+    .do(checkRootVTreeNotCustomElement)
+    .bufferCount(2)
+    .switch(diffAndPatchToElement$)
 }
 
 function makeEventsSelector(element$) {
@@ -168,7 +168,7 @@ function makeEventsSelector(element$) {
       throw new Error(`DOM driver's get() expects second argument to be a ` +
         `string representing the event type to listen for.`)
     }
-    return element$.flatMapLatest(element => {
+    return element$.switchMap(element => {
       if (!element) {
         return Rx.Observable.empty()
       }
@@ -214,11 +214,15 @@ function makeDOMDriverWithRegistry(container, CERegistry) {
     if (!isRootForCustomElement(container)) {
       rawRootElem$ = rawRootElem$.startWith(container)
     }
-    let rootElem$ = fixRootElem$(rawRootElem$, container).replay(null, 1)
-    let disposable = rootElem$.connect()
+    //let rootElem$ = fixRootElem$(rawRootElem$, container).replay(null, 1)
+    let rootElem$ = fixRootElem$(rawRootElem$, container)
+      .multicast(() => new Rx.ReplaySubject(1))
+    let subscriber = rootElem$.connect()
+    console.log(subscriber)
     return {
       select: makeElementSelector(rootElem$),
-      dispose: disposable.dispose.bind(disposable),
+      /* @TODO This should probably be called unsubscribe */
+      dispose: subscriber.unsubscribe,
     }
   }
 }
