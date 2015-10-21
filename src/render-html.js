@@ -1,4 +1,4 @@
-let Rx = require('@reactivex/rxjs')
+let Rx = require(`@reactivex/rxjs`)
 let toHTML = require(`vdom-to-html`)
 let {replaceCustomElementsWithSomething, makeCustomElementsRegistry} =
   require(`./custom-elements`)

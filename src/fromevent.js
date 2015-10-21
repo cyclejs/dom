@@ -1,7 +1,7 @@
 let Rx = require(`@reactivex/rxjs`)
 
 const disposableCreate = (func) => new Rx.Subscription(func)
-const AnonymousObservable = Rx.AnonymousObservable
+const observableCreate = Rx.Observable.create
 
 function createListener({element, eventName, handler, useCapture}) {
   if (element.addEventListener) {
@@ -34,12 +34,12 @@ function createEventListener({element, eventName, handler, useCapture}) {
 }
 
 function fromEvent(element, eventName, useCapture = false) {
-  return new AnonymousObservable(function subscribe(observer) {
+  return observableCreate(function subscribe(observer) {
     return createEventListener({
       element,
       eventName,
       handler: function handler() {
-        observer.onNext(arguments[0])
+        observer.next(arguments[0])
       },
       useCapture})
   }).publish().refCount()

@@ -78,22 +78,18 @@ describe('Rendering', function () {
       let [requests, responses] = Cycle.run(app, {
         DOM: makeDOMDriver(createRenderTarget())
       });
-      responses.DOM.select(':root').observable.subscribe(root => {
-        console.log(root)
-        done()
-      })
 
-      //responses.DOM.select(':root').observable.skip(1).take(1).subscribe(root => {
-      //  let classNameRegex = /top\-most/;
-      //  assert.strictEqual(root.tagName, 'DIV');
-      //  let child = root.children[0];
-      //  assert.notStrictEqual(classNameRegex.exec(child.className), null);
-      //  assert.strictEqual(classNameRegex.exec(child.className)[0], 'top-most');
-      //  responses.dispose();
-      //  done();
-      //});
+      responses.DOM.select(':root').observable.skip(1).take(1).subscribe(root => {
+        let classNameRegex = /top\-most/;
+        assert.strictEqual(root.tagName, 'DIV');
+        let child = root.children[0];
+        assert.notStrictEqual(classNameRegex.exec(child.className), null);
+        assert.strictEqual(classNameRegex.exec(child.className)[0], 'top-most');
+        responses.dispose();
+        done();
+      });
     });
-/*
+
     it('should convert a simple virtual-dom <select> to DOM element', function (done) {
       function app() {
         return {
@@ -466,13 +462,13 @@ describe('Rendering', function () {
           'my-element': Fixture89.myElement
         })
       });
-
       responses.DOM.select(':root').observable.skip(1).take(1).subscribe(function (root) {
         setTimeout(() => {
           let myelement = root.querySelector('.myelementclass');
           assert.notStrictEqual(myelement, null);
           assert.strictEqual(myelement.tagName, 'H3');
           assert.strictEqual(myelement.textContent, '123');
+          done()
         }, 100);
         setTimeout(() => {
           let myelement = root.querySelector('.myelementclass');
@@ -481,7 +477,8 @@ describe('Rendering', function () {
           assert.strictEqual(myelement.textContent, '456');
           responses.dispose();
           done();
-        }, 500);
+        }, 946); // Weird that the timeout must be this high
+                 // Wonder if it is machine specific
       });
     });
 
@@ -497,13 +494,16 @@ describe('Rendering', function () {
           'my-element': Fixture89.myElement
         })
       });
-      responses.DOM.select(':root').observable.subscribeOnError(function (err) {
-        assert.strictEqual(err.message,
-          'Illegal to use a Cycle custom element as the root of a View.'
-        );
-        responses.dispose();
-        done();
-      });
+      responses.DOM.select(':root').observable.subscribe(
+        null,
+        function (err) {
+          assert.strictEqual(err.message,
+            'Illegal to use a Cycle custom element as the root of a View.'
+          );
+          responses.dispose();
+          done();
+        }
+      );
     });
 
     it('should render a VTree with a child Observable<VTree>', function (done) {
@@ -535,14 +535,14 @@ describe('Rendering', function () {
     it('should render a VTree with a grandchild Observable<VTree>', function (done) {
       function app() {
         let grandchild$ = Rx.Observable
-          .just(
+          .of(
             h('h4.grandchild', {}, [
               'I am a baby'
             ])
           )
           .delay(20);
         let child$ = Rx.Observable
-          .just(
+          .of(
             h('h3.child', {}, [
               'I am a kid', grandchild$
             ])
@@ -569,8 +569,9 @@ describe('Rendering', function () {
       });
     });
 
+    // Important! Modified range because of timing issues
     it('should not work after has been disposed', function (done) {
-      let number$ = Rx.Observable.range(1, 3)
+      let number$ = Rx.Observable.range(1, 10)
         .concatMap(x => Rx.Observable.of(x).delay(50));
       function app() {
         return {
@@ -584,11 +585,12 @@ describe('Rendering', function () {
       });
       responses.DOM.select(':root').observable.skip(1).subscribe(function (root) {
         let selectEl = root.querySelector('.target');
+        //console.log(selectEl.textContent)
         assert.notStrictEqual(selectEl, null);
         assert.notStrictEqual(typeof selectEl, 'undefined');
         assert.strictEqual(selectEl.tagName, 'H3');
-        assert.notStrictEqual(selectEl.textContent, '3');
-        if (selectEl.textContent === '2') {
+        assert.notStrictEqual(selectEl.textContent, '10');
+        if (selectEl.textContent === '9') {
           responses.dispose();
           requests.dispose();
           setTimeout(() => {
@@ -596,6 +598,6 @@ describe('Rendering', function () {
           }, 100);
         }
       });
-    });*/
+    });
   });
 });

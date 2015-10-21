@@ -1,4 +1,6 @@
 let Rx = require(`@reactivex/rxjs`)
+const {isEqual} = require(`./helpers/isEqual`)
+const identity = require(`./helpers/identity`)
 const ALL_PROPS = `*`
 const PROPS_DRIVER_NAME = `props`
 const EVENTS_SINK_NAME = `events`
@@ -21,7 +23,7 @@ function makeDispatchFunction(element, eventName) {
 
 function subscribeDispatchers(element) {
   let {customEvents} = element.cycleCustomElementMetadata
-  let disposables = new Rx.CompositeDisposable()
+  let disposables = new Rx.Subscription()
   for (let name in customEvents) {
     if (customEvents.hasOwnProperty(name) &&
       typeof customEvents[name].subscribe === `function`)
@@ -37,12 +39,12 @@ function subscribeDispatchers(element) {
 
 function subscribeDispatchersWhenRootChanges(metadata) {
   return metadata.rootElem$
-    .distinctUntilChanged(Rx.helpers.identity,
+    .distinctUntilChanged(identity,
       (x, y) => x && y && x.isEqualNode && x.isEqualNode(y)
     )
     .subscribe(function resubscribeDispatchers(rootElem) {
       if (metadata.eventDispatchingSubscription) {
-        metadata.eventDispatchingSubscription.dispose()
+        metadata.eventDispatchingSubscription.unsubscribe()
       }
       metadata.eventDispatchingSubscription = subscribeDispatchers(rootElem)
     })
@@ -61,7 +63,7 @@ function subscribeEventDispatchingSink(element, widget) {
 
 function makePropertiesDriver() {
   let propertiesDriver = {}
-  let defaultComparer = Rx.helpers.defaultComparer
+  let defaultComparer = isEqual
   Object.defineProperty(propertiesDriver, `type`, {
     enumerable: false,
     value: `PropertiesDriver`,
@@ -76,7 +78,7 @@ function makePropertiesDriver() {
       if (typeof this[streamKey] === `undefined`) {
         this[streamKey] = new Rx.ReplaySubject(1)
       }
-      return this[streamKey].distinctUntilChanged(Rx.helpers.identity, comparer)
+      return this[streamKey].distinctUntilChanged(identity, comparer)
     },
   })
   Object.defineProperty(propertiesDriver, `getAll`, {
@@ -130,7 +132,7 @@ function makeConstructor() {
     this.customElementsRegistry = CERegistry
     this.driverName = driverName
     this.firstRootElem$ = new Rx.ReplaySubject(1)
-    this.disposables = new Rx.CompositeDisposable()
+    this.disposables = new Rx.Subscription()
   }
 }
 
@@ -181,10 +183,10 @@ function makeInit(tagName, definitionFn) {
     let requests = definitionFn(defFnInput)
     validateDefFnOutput(requests, driverName, tagName)
     widget.disposables.add(
-      requests[driverName].subscribe(proxyVTree$.asObserver())
+      requests[driverName].subscribe(proxyVTree$)
     )
     widget.disposables.add(
-      rootElem$.subscribe(widget.firstRootElem$.asObserver())
+      rootElem$.subscribe(widget.firstRootElem$)
     )
     element.cycleCustomElementMetadata = {
       propertiesDriver,
@@ -220,7 +222,7 @@ function validatePropertiesDriverInMetadata(element, fnName) {
 function updateCustomElement(previous, element) {
   if (previous) {
     this.disposables = previous.disposables
-    this.firstRootElem$.onNext(0)
+    this.firstRootElem$.next(0)
     this.firstRootElem$.onCompleted()
   }
   validatePropertiesDriverInMetadata(element, `update()`)
@@ -228,13 +230,13 @@ function updateCustomElement(previous, element) {
   //console.log(`%cupdate() ${element.className}`, `color: #880088`)
   let propsDriver = element.cycleCustomElementMetadata.propertiesDriver
   if (propsDriver.hasOwnProperty(ALL_PROPS)) {
-    propsDriver[ALL_PROPS].onNext(this.properties)
+    propsDriver[ALL_PROPS].next(this.properties)
   }
   for (let prop in propsDriver) {
     if (propsDriver.hasOwnProperty(prop) &&
       this.properties.hasOwnProperty(prop))
     {
-      propsDriver[prop].onNext(this.properties[prop])
+      propsDriver[prop].next(this.properties[prop])
     }
   }
 }

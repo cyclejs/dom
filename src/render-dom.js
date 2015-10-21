@@ -159,7 +159,7 @@ function renderRawRootElem$(vtree$, domContainer, {CERegistry, driverName}) {
     .map(makeReplaceCustomElementsWithWidgets(CERegistry, driverName))
     .do(checkRootVTreeNotCustomElement)
     .bufferCount(2)
-    .switch(diffAndPatchToElement$)
+    .flatMap(diffAndPatchToElement$)
 }
 
 function makeEventsSelector(element$) {
@@ -218,11 +218,10 @@ function makeDOMDriverWithRegistry(container, CERegistry) {
     let rootElem$ = fixRootElem$(rawRootElem$, container)
       .multicast(() => new Rx.ReplaySubject(1))
     let subscriber = rootElem$.connect()
-    console.log(subscriber)
     return {
       select: makeElementSelector(rootElem$),
       /* @TODO This should probably be called unsubscribe */
-      dispose: subscriber.unsubscribe,
+      dispose: () => subscriber.unsubscribe(),
     }
   }
 }
