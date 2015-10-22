@@ -220,8 +220,7 @@ function makeDOMDriverWithRegistry(container, CERegistry) {
     let subscriber = rootElem$.connect()
     return {
       select: makeElementSelector(rootElem$),
-      /* @TODO This should probably be called unsubscribe */
-      dispose: () => subscriber.unsubscribe(),
+      unsubscribe: () => subscriber.unsubscribe(),
     }
   }
 }
