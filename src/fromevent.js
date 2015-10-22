@@ -1,14 +1,11 @@
 let Rx = require(`@reactivex/rxjs`)
 
-const disposableCreate = (func) => new Rx.Subscription(func)
-const observableCreate = Rx.Observable.create
-
 function createListener({element, eventName, handler, useCapture}) {
   if (element.addEventListener) {
     element.addEventListener(eventName, handler, useCapture)
-    return disposableCreate(function removeEventListener() {
+    return new Rx.Subscription(() =>
       element.removeEventListener(eventName, handler, useCapture)
-    })
+    )
   }
   throw new Error(`No listener found`)
 }
@@ -34,7 +31,7 @@ function createEventListener({element, eventName, handler, useCapture}) {
 }
 
 function fromEvent(element, eventName, useCapture = false) {
-  return observableCreate(function subscribe(observer) {
+  return Rx.Observable.create(function subscribe(observer) {
     return createEventListener({
       element,
       eventName,
