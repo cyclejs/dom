@@ -13,9 +13,8 @@ describe('HTML Driver', function () {
         html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
+    
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
@@ -31,9 +30,8 @@ describe('HTML Driver', function () {
         html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
+
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
@@ -46,9 +44,8 @@ describe('HTML Driver', function () {
         html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
+
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
@@ -66,13 +63,12 @@ describe('HTML Driver', function () {
         DOM: Rx.Observable.of(h('div.test-element', [aDialogue().DOM]))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      DOM: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {DOM: makeHTMLDriver()});
+
     responses.DOM.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-        '<h3 class="a-dialogue"></h3>' +
+          '<h3 class="a-dialogue"></h3>' +
         '</div>'
       );
       done();
@@ -97,16 +93,14 @@ describe('HTML Driver', function () {
         html: Rx.Observable.of(h('div.test-element', [aNiceDialogue().html]))
       };
     }
-    let html$ = Cycle.run(app, {
-      html: makeHTMLDriver()
-    })[1].html;
+    let html$ = Cycle.run(app, {html: makeHTMLDriver()})[1].html;
 
     html$.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-        '<div class="a-nice-dialogue">' +
-        'foobar<h3 class="a-dialogue"></h3>' +
-        '</div>' +
+          '<div class="a-nice-dialogue">' +
+            'foobar<h3 class="a-dialogue"></h3>' +
+          '</div>' +
         '</div>'
       );
       done();
@@ -129,14 +123,12 @@ describe('HTML Driver', function () {
         )
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      DOM: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {DOM: makeHTMLDriver()});
 
     responses.DOM.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-        '<h3 class="a-dialogue">YES</h3>' +
+          '<h3 class="a-dialogue">YES</h3>' +
         '</div>'
       );
       done();
@@ -174,25 +166,23 @@ describe('HTML Driver', function () {
         )
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
 
     responses.html.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-        '<div>' +
-        '<h2 class="a">a</h2>' +
-        '<h4 class="b">b</h4>' +
-        '<h1 class="fooclass"></h1>' +
-        '</div>' +
-        '<div>' +
-        '<h3 class="c">c</h3>' +
-        '<div>' +
-        '<p class="d">d</p>' +
-        '<h2 class="barclass"></h2>' +
-        '</div>' +
-        '</div>' +
+          '<div>' +
+            '<h2 class="a">a</h2>' +
+            '<h4 class="b">b</h4>' +
+            '<h1 class="fooclass"></h1>' +
+          '</div>' +
+          '<div>' +
+            '<h3 class="c">c</h3>' +
+            '<div>' +
+              '<p class="d">d</p>' +
+              '<h2 class="barclass"></h2>' +
+            '</div>' +
+          '</div>' +
         '</div>'
       );
       done();
