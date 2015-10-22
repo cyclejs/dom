@@ -14,7 +14,7 @@ describe('HTML Driver', function () {
       };
     }
     let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
-    
+
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
