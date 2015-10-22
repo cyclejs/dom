@@ -6,8 +6,6 @@ let VDOM = {
   patch: require(`virtual-dom/patch`),
   parse: typeof window !== `undefined` ? require(`vdom-parser`) : () => {},
 }
-let {replaceCustomElementsWithSomething, makeCustomElementsRegistry} =
-  require(`./custom-elements`)
 let {transposeVTree} = require(`./transposition`)
 let matchesSelector
 // Try-catch to prevent unnecessary import of DOM-specifics in Node.js env:
@@ -25,86 +23,7 @@ function isElement(obj) {
     typeof obj.nodeName === `string`
 }
 
-function fixRootElem$(rawRootElem$, domContainer) {
-  // Create rootElem stream and automatic className correction
-  let originalClasses = (
-    domContainer.className ||
-    domContainer.className.baseVal ||
-    ``)
-    .trim().split(/\s+/)
-  let originalId = domContainer.id
-  //console.log('%coriginalClasses: ' + originalClasses, 'color: lightgray')
-  return rawRootElem$
-    .map(function fixRootElemClassNameAndId(rootElem) {
-      let fixedRootClassName = null
-      let svg = false
-      if (typeof rootElem.className === `string`) {
-        fixedRootClassName = rootElem.className
-      } else if (typeof rootElem.className.baseVal === `string`) {
-        fixedRootClassName = rootElem.className.baseVal
-        svg = true
-      }
-      let previousClasses = fixedRootClassName.trim().split(/\s+/)
-      let missingClasses = originalClasses
-        .filter(clss => previousClasses.indexOf(clss) < 0)
-      let classes = previousClasses.length > 0 ?
-        previousClasses.concat(missingClasses) :
-        missingClasses
-      //console.log('%cfixRootElemClassName(), missingClasses: ' +
-      //  missingClasses, 'color: lightgray')
-      if (svg) {
-        rootElem.className.baseVal = classes.join(` `).trim()
-      } else {
-        rootElem.className = classes.join(` `).trim()
-      }
-      if (originalId) { rootElem.id = originalId }
-      //console.log('%c  result: ' + fixedRootClassName, 'color: lightgray')
-      //console.log('%cEmit rootElem$ ' + rootElem.tagName + '.' +
-      //  fixedRootClassName, 'color: #009988')
-      return rootElem
-    })
-}
-
-function isVTreeCustomElement(vtree) {
-  return vtree.type === `Widget` && vtree.isCustomElementWidget
-}
-
-function makeReplaceCustomElementsWithWidgets(CERegistry, driverName) {
-  return function replaceCustomElementsWithWidgets(vtree) {
-    return replaceCustomElementsWithSomething(vtree, CERegistry,
-      (_vtree, WidgetClass) => new WidgetClass(_vtree, CERegistry, driverName)
-    )
-  }
-}
-
-function getArrayOfAllWidgetFirstRootElem$(vtree) {
-  if (vtree.type === `Widget` && vtree.firstRootElem$) {
-    return [vtree.firstRootElem$]
-  }
-  // Or replace children recursively
-  let array = []
-  if (Array.isArray(vtree.children)) {
-    for (let i = vtree.children.length - 1; i >= 0; i--) {
-      array = array.concat(getArrayOfAllWidgetFirstRootElem$(vtree.children[i]))
-    }
-  }
-  return array
-}
-
-function checkRootVTreeNotCustomElement(vtree) {
-  if (isVTreeCustomElement(vtree)) {
-    throw new Error(`Illegal to use a Cycle custom element as the root of ` +
-      `a View.`)
-  }
-}
-
-function isRootForCustomElement(rootElem) {
-  return !!rootElem.cycleCustomElementMetadata
-}
-
 function wrapTopLevelVTree(vtree, rootElem) {
-  if (isRootForCustomElement(rootElem)) { return vtree }
-
   const {id: vtreeId = ``} = vtree.properties
   const {className: vtreeClass = ``} = vtree.properties
   const sameId = vtreeId === rootElem.id
@@ -127,37 +46,21 @@ function makeDiffAndPatchToElement$(rootElem) {
     //let k = isCustomElement ? ' is custom element ' : ' is top level'
     let prevVTree = wrapTopLevelVTree(oldVTree, rootElem)
     let nextVTree = wrapTopLevelVTree(newVTree, rootElem)
-    let waitForChildrenStreams = getArrayOfAllWidgetFirstRootElem$(nextVTree)
-    let rootElemAfterChildrenFirstRootElem$ = Rx.Observable
-      .combineLatest(waitForChildrenStreams, () => {
-        //console.log('%crawRootElem$ emits. (1)' + k, 'color: #008800')
-        return rootElem
-      })
-    let cycleCustomElementMetadata = rootElem.cycleCustomElementMetadata
     //console.log('%cVDOM diff and patch START' + k, 'color: #636300')
     /* eslint-disable */
     rootElem = VDOM.patch(rootElem, VDOM.diff(prevVTree, nextVTree))
     /* eslint-enable */
     //console.log('%cVDOM diff and patch END' + k, 'color: #636300')
-    if (cycleCustomElementMetadata) {
-      rootElem.cycleCustomElementMetadata = cycleCustomElementMetadata
-    }
-    if (waitForChildrenStreams.length === 0) {
-      //console.log('%crawRootElem$ emits. (2)' + k, 'color: #008800')
-      return Rx.Observable.of(rootElem)
-    }
     //console.log('%crawRootElem$ waiting children.' + k, 'color: #008800')
-    return rootElemAfterChildrenFirstRootElem$
+    return Rx.Observable.of(rootElem)
   }
 }
 
-function renderRawRootElem$(vtree$, domContainer, {CERegistry, driverName}) {
+function renderRawRootElem$(vtree$, domContainer) {
   let diffAndPatchToElement$ = makeDiffAndPatchToElement$(domContainer)
   return vtree$
     .switchMap(transposeVTree)
     .startWith(VDOM.parse(domContainer))
-    .map(makeReplaceCustomElementsWithWidgets(CERegistry, driverName))
-    .do(checkRootVTreeNotCustomElement)
     .bufferCount(2)
     .flatMap(diffAndPatchToElement$)
 }
@@ -205,27 +108,7 @@ function validateDOMDriverInput(vtree$) {
   }
 }
 
-function makeDOMDriverWithRegistry(container, CERegistry) {
-  return function domDriver(vtree$, driverName) {
-    validateDOMDriverInput(vtree$)
-    let rawRootElem$ = renderRawRootElem$(
-      vtree$, container, {CERegistry, driverName}
-    )
-    if (!isRootForCustomElement(container)) {
-      rawRootElem$ = rawRootElem$.startWith(container)
-    }
-    //let rootElem$ = fixRootElem$(rawRootElem$, container).replay(null, 1)
-    let rootElem$ = fixRootElem$(rawRootElem$, container)
-      .multicast(() => new Rx.ReplaySubject(1))
-    let subscriber = rootElem$.connect()
-    return {
-      select: makeElementSelector(rootElem$),
-      unsubscribe: () => subscriber.unsubscribe(),
-    }
-  }
-}
-
-function makeDOMDriver(container, customElementDefinitions = {}) {
+function makeDOMDriver(container) {
   // Find and prepare the container
   let domContainer = typeof container === `string` ?
     document.querySelector(container) :
@@ -238,23 +121,25 @@ function makeDOMDriver(container, customElementDefinitions = {}) {
       `string.`)
   }
 
-  let registry = makeCustomElementsRegistry(customElementDefinitions)
-  return makeDOMDriverWithRegistry(domContainer, registry)
+  return function domDriver(vtree$) {
+    validateDOMDriverInput(vtree$)
+    let rootElem$ = renderRawRootElem$(vtree$, domContainer)
+      .startWith(domContainer)
+      .multicast(() => new Rx.ReplaySubject(1))
+    let subscriber = rootElem$.connect()
+    return {
+      select: makeElementSelector(rootElem$),
+      unsubscribe: () => subscriber.unsubscribe(),
+    }
+  }
 }
 
 module.exports = {
   isElement,
-  fixRootElem$,
-  isVTreeCustomElement,
-  makeReplaceCustomElementsWithWidgets,
-  getArrayOfAllWidgetFirstRootElem$,
-  isRootForCustomElement,
   wrapTopLevelVTree,
-  checkRootVTreeNotCustomElement,
   makeDiffAndPatchToElement$,
   renderRawRootElem$,
   validateDOMDriverInput,
-  makeDOMDriverWithRegistry,
 
   makeDOMDriver,
 }
