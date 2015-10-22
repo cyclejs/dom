@@ -5,7 +5,7 @@ let assert = require('assert');
 let Cycle = require('@cycle/core');
 let CycleDOM = require('../../src/cycle-dom');
 let Rx = require('@reactivex/rxjs');
-let {h, hJSX, makeDOMDriver} = CycleDOM;
+let {h, hJSX, makeDOMDriver, svg} = CycleDOM;
 
 function createRenderTarget(id = null) {
   let element = document.createElement('div');
@@ -541,4 +541,51 @@ describe('DOM Driver', function () {
       }
     });
   });
+
+  it('should allow nested svg elements as children', function (done) {
+    // Make the svg nested dialogue
+    function workspace(sources) {
+      const children$ = sources.children$ || Rx.Observable.of(void 0);
+      return {
+        DOM: sources.props$.combineLatest(
+          children$,
+          (props, children) => {
+            console.log(children)
+            const svgProps = {...props, children: void 0};
+            return svg('svg', {
+                attributes: svgProps,
+                style: {border: '1px solid rgb(221, 221, 221)'}
+              },
+              children
+            );
+          }
+        )
+      }
+    }
+    // Use the nested dialogue
+    function app() {
+      return {
+        DOM: Rx.Observable.of(
+          h('section', workspace({
+            props$: Rx.Observable.of({width: 500, height: 500}),
+            children$: workspace({
+              props$: Rx.Observable.of({
+                width: 100, height: 100
+              })
+            }).DOM
+          }).DOM)
+        )
+      };
+    }
+    let [requests, responses] = Cycle.run(app, {
+      DOM: makeDOMDriver(createRenderTarget())
+    });
+    // Make assertions
+    responses.DOM.select(':root').observable.skip(1).take(1).subscribe(function (root) {
+      let svgElements = root.querySelectorAll('svg');
+      assert.strictEqual(svgElements.length, 2);
+      responses.dispose();
+      done();
+    });
+  })
 });
