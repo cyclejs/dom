@@ -3,19 +3,18 @@
 let assert = require('assert');
 let Cycle = require('@cycle/core');
 let CycleDOM = require('../../src/cycle-dom');
-let Rx = require('rx');
+let Rx = require('@reactivex/rxjs');
 let {h, makeHTMLDriver} = CycleDOM;
 
 describe('HTML Driver', function () {
   it('should output HTML when given a simple vtree stream', function (done) {
     function app() {
       return {
-        html: Rx.Observable.just(h('div.test-element', ['Foobar']))
+        html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
+
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
@@ -28,12 +27,11 @@ describe('HTML Driver', function () {
       assert.strictEqual(typeof html.select('whatever').observable.subscribe, 'function');
       assert.strictEqual(typeof html.select('whatever').events().subscribe, 'function');
       return {
-        html: Rx.Observable.just(h('div.test-element', ['Foobar']))
+        html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
+
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
@@ -43,73 +41,65 @@ describe('HTML Driver', function () {
   it('should output simple HTML Observable at `.get(\':root\')`', function (done) {
     function app() {
       return {
-        html: Rx.Observable.just(h('div.test-element', ['Foobar']))
+        html: Rx.Observable.of(h('div.test-element', ['Foobar']))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver()
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
+
     responses.html.subscribe(html => {
       assert.strictEqual(html, '<div class="test-element">Foobar</div>');
       done();
     });
   });
 
-  it('should render a simple nested custom element as HTML', function (done) {
-    function myElement() {
+  it('should render a simple nested dialogue element as HTML', function (done) {
+    function aDialogue() {
       return {
-        DOM: Rx.Observable.just(h('h3.myelementclass'))
+        DOM: Rx.Observable.of(h('h3.a-dialogue'))
       };
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(h('div.test-element', [h('my-element')]))
+        DOM: Rx.Observable.of(h('div.test-element', [aDialogue().DOM]))
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      DOM: makeHTMLDriver({'my-element': myElement})
-    });
+    let [requests, responses] = Cycle.run(app, {DOM: makeHTMLDriver()});
+
     responses.DOM.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-          '<h3 class="myelementclass"></h3>' +
+          '<h3 class="a-dialogue"></h3>' +
         '</div>'
       );
       done();
     });
   });
 
-  it('should render double nested custom elements as HTML', function (done) {
-    function myElement() {
+  it('should render double nested dialogues as HTML', function (done) {
+    function aDialogue() {
       return {
-        html: Rx.Observable.just(h('h3.myelementclass'))
+        DOM: Rx.Observable.of(h('h3.a-dialogue'))
       };
     }
-    function niceElement() {
+    function aNiceDialogue() {
       return {
-        html: Rx.Observable.just(h('div.a-nice-element', [
-          String('foobar'), h('my-element')
+        html: Rx.Observable.of(h('div.a-nice-dialogue', [
+          String('foobar'), aDialogue().DOM
         ]))
       };
     }
     function app() {
       return {
-        html: Rx.Observable.just(h('div.test-element', [h('nice-element')]))
+        html: Rx.Observable.of(h('div.test-element', [aNiceDialogue().html]))
       };
     }
-    let customElements = {
-      'my-element': myElement,
-      'nice-element': niceElement
-    };
-    let html$ = Cycle.run(app, {
-      html: makeHTMLDriver(customElements)
-    })[1].html;
+    let html$ = Cycle.run(app, {html: makeHTMLDriver()})[1].html;
 
     html$.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-          '<div class="a-nice-element">' +
-            'foobar<h3 class="myelementclass"></h3>' +
+          '<div class="a-nice-dialogue">' +
+            'foobar<h3 class="a-dialogue"></h3>' +
           '</div>' +
         '</div>'
       );
@@ -117,103 +107,66 @@ describe('HTML Driver', function () {
     });
   });
 
-  it('should HTML-render a nested custom element with props', function (done) {
-    function myElement(ext) {
+  it('should HTML-render a nested dialogue with props$', function (done) {
+    function aDialogue(sources) {
       return {
-        DOM: ext.props.get('foobar')
-          .map(foobar => h('h3.myelementclass', String(foobar).toUpperCase()))
+        DOM: sources.props$
+          .map(props => h('h3.a-dialogue', String(props.foobar).toUpperCase()))
       };
     }
     function app() {
       return {
-        DOM: Rx.Observable.just(
+        DOM: Rx.Observable.of(
           h('div.test-element', [
-            h('my-element', {foobar: 'yes'})
+            aDialogue({props$: Rx.Observable.of({foobar: 'yes'})}).DOM
           ])
         )
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      DOM: makeHTMLDriver({'my-element': myElement})
-    });
+    let [requests, responses] = Cycle.run(app, {DOM: makeHTMLDriver()});
 
     responses.DOM.subscribe(html => {
       assert.strictEqual(html,
         '<div class="test-element">' +
-          '<h3 class="myelementclass">YES</h3>' +
+          '<h3 class="a-dialogue">YES</h3>' +
         '</div>'
       );
       done();
     });
   });
 
-  it('should HTML-render a nested custom element with props (2)', function (done) {
-    function myElement(ext) {
-      return {
-        DOM: ext.props.get('*')
-          .map(props => h('h3.myelementclass', String(props.foobar).toUpperCase()))
-      };
-    }
-    function app() {
-      return {
-        DOM: Rx.Observable.just(
-          h('div.test-element', [
-            h('my-element', {foobar: 'yes'})
-          ])
-        )
-      };
-    }
-    let [requests, responses] = Cycle.run(app, {
-      DOM: makeHTMLDriver({'my-element': myElement})
-    });
-
-    responses.DOM.subscribe(html => {
-      assert.strictEqual(html,
-        '<div class="test-element">' +
-        '<h3 class="myelementclass">YES</h3>' +
-        '</div>'
-      );
-      done();
-    });
-  });
-
-  it('should render a complex custom element tree as HTML', function (done) {
+  it('should render a complex nested dialogue tree as HTML', function (done) {
     function xFoo() {
       return {
-        html: Rx.Observable.just(h('h1.fooclass'))
+        html: Rx.Observable.of(h('h1.fooclass'))
       };
     }
     function xBar() {
       return {
-        html: Rx.Observable.just(h('h2.barclass'))
+        html: Rx.Observable.of(h('h2.barclass'))
       };
     }
     function app() {
       return {
-        html: Rx.Observable.just(
+        html: Rx.Observable.of(
           h('.test-element', [
             h('div', [
               h('h2.a', 'a'),
               h('h4.b', 'b'),
-              h('x-foo')
+              xFoo().html
             ]),
             h('div', [
               h('h3.c', 'c'),
               h('div', [
                 h('p.d', 'd'),
-                h('x-bar')
+                xBar().html
               ])
             ])
           ])
         )
       };
     }
-    let [requests, responses] = Cycle.run(app, {
-      html: makeHTMLDriver({
-        'x-foo': xFoo,
-        'x-bar': xBar
-      })
-    });
+    let [requests, responses] = Cycle.run(app, {html: makeHTMLDriver()});
 
     responses.html.subscribe(html => {
       assert.strictEqual(html,
@@ -236,3 +189,4 @@ describe('HTML Driver', function () {
     });
   });
 });
+
