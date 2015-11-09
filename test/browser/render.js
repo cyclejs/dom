@@ -178,18 +178,18 @@ describe('Rendering', function () {
       }
 
       // Run it
-      let [requests, responses] = Cycle.run(app, {
+      let [sinks, source] = Cycle.run(app, {
         DOM: makeDOMDriver(createRenderTarget())
       });
 
       // Assert it
-      responses.DOM.select(':root').observable.skip(1).take(1).subscribe(function (root) {
+      source.DOM.select(':root').observable.skip(1).take(1).subscribe(function (root) {
         let selectEl = root.querySelector('h4');
         assert.notStrictEqual(selectEl, null);
         assert.notStrictEqual(typeof selectEl, 'undefined');
         assert.strictEqual(selectEl.tagName, 'H4');
         assert.strictEqual(selectEl.textContent, 'Constantly hello0');
-        responses.dispose();
+        source.dispose();
         done();
       });
     });
