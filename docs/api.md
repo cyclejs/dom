@@ -78,6 +78,9 @@ the top of the ES6 file, make sure you import `hJSX` with
 `import {hJSX} from '@cycle/dom'`, and then you can use JSX to create
 VTrees.
 
+Note that to pass in custom attributes, e.g. data-*, you must use the attributes key
+like `<tag attributes={{'data-custom-attr': 'foo'}} />`
+
 - - -
 
 ### <a id="svg"></a> `svg`
