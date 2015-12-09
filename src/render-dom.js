@@ -93,23 +93,27 @@ function makeIsStrictlyInRootScope(rootList, namespace) {
   }
 }
 
-function makeEventsSelector(element$) {
+let stream = new Rx.Subject();
+
+function makeEventsSelector(element$, history) {
   return function events(eventName, useCapture = false) {
     if (typeof eventName !== `string`) {
       throw new Error(`DOM driver's events() expects argument to be a ` +
         `string representing the event type to listen for.`)
     }
 
-    return element$.flatMapLatest(elements => {
+    element$.flatMapLatest(elements => {
       if (elements.length === 0) {
         return Rx.Observable.empty()
       }
-      return fromEvent(elements, eventName, useCapture)
-    }).share()
+      return fromEvent(elements, eventName, history, useCapture)
+    }).share().subscribe(stream);
+
+    return stream;
   }
 }
 
-function makeElementSelector(rootEl$) {
+function makeElementSelector(rootEl$, history) {
   return function select(selector) {
     if (typeof selector !== `string`) {
       throw new Error(`DOM driver's select() expects the argument to be a ` +
@@ -134,8 +138,8 @@ function makeElementSelector(rootEl$) {
     return {
       observable: element$,
       namespace: namespace.concat(selector),
-      select: makeElementSelector(element$),
-      events: makeEventsSelector(element$),
+      select: makeElementSelector(element$, history),
+      events: makeEventsSelector(element$, history),
       isolateSource,
       isolateSink,
     }
@@ -162,7 +166,9 @@ function makeDOMDriver(container) {
       `string.`)
   }
 
-  return function domDriver(vtree$) {
+  let history = [];
+
+  function domDriver(vtree$) {
     validateDOMSink(vtree$)
     let rootElem$ = renderRawRootElem$(vtree$, domContainer)
       .startWith(domContainer)
@@ -170,12 +176,35 @@ function makeDOMDriver(container) {
     let disposable = rootElem$.connect()
     return {
       namespace: [],
-      select: makeElementSelector(rootElem$),
+      select: makeElementSelector(rootElem$, history),
       dispose: disposable.dispose.bind(disposable),
       isolateSource,
       isolateSink,
+      history: () => history
     }
   }
+
+  domDriver.setHistory = function (newHistory) {
+    history = newHistory;
+  }
+
+  domDriver.processHistory = function () {
+    if (history.length === 0) {
+      return;
+    }
+
+    const scheduler = new Rx.HistoricalScheduler(history[0].time);
+
+    history.forEach(function (historicEvent) {
+      scheduler.scheduleAbsolute({}, historicEvent.time, function () {
+        stream.onNext(historicEvent.event);
+      });
+    });
+
+    scheduler.start();
+  }
+
+  return domDriver;
 }
 
 module.exports = {
