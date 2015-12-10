@@ -95,21 +95,23 @@ function makeIsStrictlyInRootScope(rootList, namespace) {
 
 let stream = new Rx.Subject();
 
-function makeEventsSelector(element$, history) {
+function makeEventsSelector(element$, addHistoryEntry) {
   return function events(eventName, useCapture = false) {
     if (typeof eventName !== `string`) {
       throw new Error(`DOM driver's events() expects argument to be a ` +
         `string representing the event type to listen for.`)
     }
 
+    const historyApi = addHistoryEntry(eventName);
+
     element$.flatMapLatest(elements => {
       if (elements.length === 0) {
         return Rx.Observable.empty()
       }
-      return fromEvent(elements, eventName, history, useCapture)
-    }).share().subscribe(stream);
+      return fromEvent(elements, eventName, historyApi.add, useCapture)
+    }).share().subscribe(historyApi.stream);
 
-    return stream;
+    return historyApi.stream;
   }
 }
 
@@ -118,6 +120,26 @@ function makeElementSelector(rootEl$, history) {
     if (typeof selector !== `string`) {
       throw new Error(`DOM driver's select() expects the argument to be a ` +
         `string as a CSS selector`)
+    }
+
+    function addHistoryEntry (eventName) {
+      if (history[selector] === undefined) {
+        history[selector] = {};
+      }
+
+      if (history[selector][eventName] === undefined) {
+        history[selector][eventName] = {stream: new Rx.Subject(), events: []};
+      }
+
+      const add = function (event) {
+        history[selector][eventName].events.push({event, time: new Date()});
+      }
+
+      return {
+        add,
+        stream: history[selector][eventName].stream
+      }
+
     }
 
     const namespace = this.namespace
@@ -139,7 +161,7 @@ function makeElementSelector(rootEl$, history) {
       observable: element$,
       namespace: namespace.concat(selector),
       select: makeElementSelector(element$, history),
-      events: makeEventsSelector(element$, history),
+      events: makeEventsSelector(element$, addHistoryEntry),
       isolateSource,
       isolateSink,
     }
@@ -166,7 +188,7 @@ function makeDOMDriver(container) {
       `string.`)
   }
 
-  let history = [];
+  let history = {};
 
   function domDriver(vtree$) {
     validateDOMSink(vtree$)
@@ -193,13 +215,21 @@ function makeDOMDriver(container) {
       return;
     }
 
-    const scheduler = new Rx.HistoricalScheduler(history[0].time);
+    const scheduler = new Rx.HistoricalScheduler();
 
-    history.forEach(function (historicEvent) {
-      scheduler.scheduleAbsolute({}, historicEvent.time, function () {
-        stream.onNext(historicEvent.event);
-      });
-    });
+    for (let selector in history) {
+      const selectorHistory = history[selector];
+
+      for (let eventName in selectorHistory) {
+        const eventHistory = selectorHistory[eventName];
+
+        eventHistory.events.forEach(function (historicEvent) {
+          scheduler.scheduleAbsolute({}, historicEvent.time, function () {
+            eventHistory.stream.onNext(historicEvent.event);
+          });
+        });
+      };
+    }
 
     scheduler.start();
   }

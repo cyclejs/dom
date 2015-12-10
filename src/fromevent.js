@@ -34,13 +34,13 @@ function createEventListener({element, eventName, handler, useCapture}) {
   return disposables
 }
 
-function fromEvent(element, eventName, history, useCapture = false) {
+function fromEvent(element, eventName, addHistoryEntry, useCapture = false) {
   return new AnonymousObservable(function subscribe(observer) {
     return createEventListener({
       element,
       eventName,
       handler: function handler() {
-        history.push({event: arguments[0], timestamp: new Date()})
+        addHistoryEntry(arguments[0])
         observer.onNext(arguments[0])
       },
       useCapture,
