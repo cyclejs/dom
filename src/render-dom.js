@@ -206,11 +206,7 @@ function makeDOMDriver(container) {
     }
   }
 
-  domDriver.setHistory = function (newHistory) {
-    history = newHistory;
-  }
-
-  domDriver.processHistory = function () {
+  domDriver.replayHistory = function (history) {
     if (history.length === 0) {
       return;
     }
