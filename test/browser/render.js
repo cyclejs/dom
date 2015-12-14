@@ -592,5 +592,45 @@ describe('Rendering', function () {
         }
       });
     });
+
+    it('should ignore values emitted from previous child observables', function (done) {
+      function app() {
+        return {
+          DOM: Rx.Observable.just(
+            h('div', [
+              h('div', 
+              Rx.Observable
+                .just(2)
+                .startWith(1)
+                .map((outer) =>
+                  Rx.Observable.just(2)
+                  .delay(outer * 100)
+                  .startWith(1)
+                  .map((inner) => h('div.target', outer+'/'+inner))
+                )
+              )
+            ])
+          )
+        };
+      };
+
+      let [sinks, sources] = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+
+      const expected = Rx.Observable
+        .from(['1/1','2/1','2/2'])
+
+      sources.DOM.select('.target').observable
+        .skip(1)
+        .map((els) => els[0].innerHTML)
+        .sequenceEqual(expected)
+        .subscribe((areSame) => {
+          assert.strictEqual(areSame, true);
+          sources.dispose();
+          sinks.dispose();
+          done();
+        });
+    });
   });
 });
