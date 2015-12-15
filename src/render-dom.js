@@ -95,14 +95,14 @@ function makeIsStrictlyInRootScope(rootList, namespace) {
 
 let stream = new Rx.Subject();
 
-function makeEventsSelector(element$, addHistoryEntry) {
+function makeEventsSelector(element$, addEventToHistory) {
   return function events(eventName, useCapture = false) {
     if (typeof eventName !== `string`) {
       throw new Error(`DOM driver's events() expects argument to be a ` +
         `string representing the event type to listen for.`)
     }
 
-    const historyApi = addHistoryEntry(eventName);
+    const historyApi = addEventToHistory(eventName);
 
     element$.flatMapLatest(elements => {
       if (elements.length === 0) {
@@ -115,31 +115,11 @@ function makeEventsSelector(element$, addHistoryEntry) {
   }
 }
 
-function makeElementSelector(rootEl$, history) {
+function makeElementSelector(rootEl$, addToHistory) {
   return function select(selector) {
     if (typeof selector !== `string`) {
       throw new Error(`DOM driver's select() expects the argument to be a ` +
         `string as a CSS selector`)
-    }
-
-    function addHistoryEntry (eventName) {
-      if (history[selector] === undefined) {
-        history[selector] = {};
-      }
-
-      if (history[selector][eventName] === undefined) {
-        history[selector][eventName] = {stream: new Rx.Subject(), events: []};
-      }
-
-      const add = function (event) {
-        history[selector][eventName].events.push({event, time: new Date()});
-      }
-
-      return {
-        add,
-        stream: history[selector][eventName].stream
-      }
-
     }
 
     const namespace = this.namespace
@@ -157,11 +137,16 @@ function makeElementSelector(rootEl$, history) {
       .reduce((prev, curr) => prev.concat(curr), [])
       .filter(makeIsStrictlyInRootScope(array, namespace))
     })
+
+    function additionalSelectorForHistory (otherSelector) {
+      return addToHistory(selector + ',' + otherSelector);
+    }
+
     return {
       observable: element$,
       namespace: namespace.concat(selector),
-      select: makeElementSelector(element$, history),
-      events: makeEventsSelector(element$, addHistoryEntry),
+      select: makeElementSelector(element$, additionalSelectorForHistory),
+      events: makeEventsSelector(element$, addToHistory(selector)),
       isolateSource,
       isolateSink,
     }
@@ -190,6 +175,27 @@ function makeDOMDriver(container) {
 
   let history = {};
 
+  function addHistoryEntry (selector) {
+    return function addEventToHistory (eventName) {
+      if (history[selector] === undefined) {
+        history[selector] = {};
+      }
+
+      if (history[selector][eventName] === undefined) {
+        history[selector][eventName] = {stream: new Rx.Subject(), events: []};
+      }
+
+      const add = function (event) {
+        history[selector][eventName].events.push({event, time: new Date()});
+      }
+
+      return {
+        add,
+        stream: history[selector][eventName].stream
+      }
+    }
+  }
+
   function domDriver(vtree$) {
     validateDOMSink(vtree$)
     let rootElem$ = renderRawRootElem$(vtree$, domContainer)
@@ -198,7 +204,7 @@ function makeDOMDriver(container) {
     let disposable = rootElem$.connect()
     return {
       namespace: [],
-      select: makeElementSelector(rootElem$, history),
+      select: makeElementSelector(rootElem$, addHistoryEntry),
       dispose: disposable.dispose.bind(disposable),
       isolateSource,
       isolateSink,
