@@ -1,4 +1,4 @@
-let svg = require(`virtual-dom/virtual-hyperscript/svg`)
+let svg = require(`./virtual-hyperscript-svg`)
 let {makeDOMDriver} = require(`./render-dom`)
 let {makeHTMLDriver} = require(`./render-html`)
 let mockDOMSource = require(`./mock-dom-source`)
@@ -26,6 +26,11 @@ let CycleDOM = {
    * Observable of VTree as input, and outputs the source object for this
    * driver, containing functions `select()` and `dispose()` that can be used
    * for debugging and testing.
+   * @param {Object} options an options object containing additional
+   * configurations. The options object is optional. These are the parameters
+   * that may be specified:
+   *   - `onError`: a callback function to handle errors. By default it is
+   *   `console.error`.
    * @function makeDOMDriver
    */
   makeDOMDriver,

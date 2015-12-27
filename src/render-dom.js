@@ -67,8 +67,17 @@ function isolateSource(source, scope) {
 function isolateSink(sink, scope) {
   return sink.map(vtree => {
     const {className: vtreeClass = ``} = vtree.properties
-    const c = `${vtreeClass} cycle-scope-${scope}`.trim()
-    vtree.properties.className = c
+    if (vtreeClass.indexOf(`cycle-scope-${scope}`) === -1) {
+      const c = `${vtreeClass} cycle-scope-${scope}`.trim()
+      vtree.properties.className = c
+    }
+    if (vtree.properties.attributes) { // for svg root elements
+      const vtreeAttrClass = vtree.properties.attributes[`class`] || ``
+      if (vtreeAttrClass.indexOf(`cycle-scope-${scope}`) === -1) {
+        const cattr = `${vtreeAttrClass} cycle-scope-${scope}`.trim()
+        vtree.properties.attributes[`class`] = cattr
+      }
+    }
     return vtree
   })
 }
@@ -78,13 +87,21 @@ function makeIsStrictlyInRootScope(rootList, namespace) {
     const matched = c.match(/cycle-scope-(\S+)/)
     return matched && namespace.indexOf(`.${c}`) === -1
   }
+  const classIsDomestic = c => {
+    const matched = c.match(/cycle-scope-(\S+)/)
+    return matched && namespace.indexOf(`.${c}`) !== -1
+  }
   return function isStrictlyInRootScope(leaf) {
-    for (let el = leaf.parentElement; el !== null; el = el.parentElement) {
+    for (let el = leaf; el !== null; el = el.parentElement) {
       if (rootList.indexOf(el) >= 0) {
         return true
       }
 
-      const classList = el.classList || String.prototype.split.call(el.className, ` `)
+      const split = String.prototype.split
+      const classList = el.classList || split.call(el.className, ` `)
+      if (Array.prototype.some.call(classList, classIsDomestic)) {
+        return true
+      }
       if (Array.prototype.some.call(classList, classIsForeign)) {
         return false
       }
@@ -123,19 +140,20 @@ function makeElementSelector(rootEl$, addToHistory) {
     }
 
     const namespace = this.namespace
-    let scopedSelector = `${namespace.join(` `)} ${selector}`.trim()
-    let element$ = selector.trim() === `:root` ? rootEl$ : rootEl$.map(x => {
-      let array = Array.isArray(x) ? x : [x]
+    const element$ = selector.trim() === `:root` ? rootEl$ : rootEl$.map(x => {
+      const array = Array.isArray(x) ? x : [x]
       return array.map(element => {
-        if (matchesSelector(element, scopedSelector)) {
+        const boundarySelector = `${namespace.join(` `)}${selector}`
+        if (matchesSelector(element, boundarySelector)) {
           return [element]
         } else {
-          let nodeList = element.querySelectorAll(scopedSelector)
+          const scopedSelector = `${namespace.join(` `)} ${selector}`.trim()
+          const nodeList = element.querySelectorAll(scopedSelector)
           return Array.prototype.slice.call(nodeList)
         }
       })
       .reduce((prev, curr) => prev.concat(curr), [])
-      .filter(makeIsStrictlyInRootScope(array, namespace))
+      .filter(makeIsStrictlyInRootScope(array, namespace.concat(selector)))
     })
 
     function additionalSelectorForHistory (otherSelector) {
@@ -160,7 +178,7 @@ function validateDOMSink(vtree$) {
   }
 }
 
-function makeDOMDriver(container) {
+function makeDOMDriver(container, options) {
   // Find and prepare the container
   let domContainer = typeof container === `string` ?
     document.querySelector(container) :
@@ -171,6 +189,11 @@ function makeDOMDriver(container) {
   } else if (!isElement(domContainer)) {
     throw new Error(`Given container is not a DOM element neither a selector ` +
       `string.`)
+  }
+  const {onError = console.error.bind(console)} = options || {}
+  if (typeof onError !== `function`) {
+    throw new Error(`You provided an \`onError\` to makeDOMDriver but it was ` +
+      `not a function. It should be a callback function to handle errors.`)
   }
 
   let history = {};
@@ -200,6 +223,7 @@ function makeDOMDriver(container) {
     validateDOMSink(vtree$)
     let rootElem$ = renderRawRootElem$(vtree$, domContainer)
       .startWith(domContainer)
+      .doOnError(onError)
       .replay(null, 1)
     let disposable = rootElem$.connect()
     return {

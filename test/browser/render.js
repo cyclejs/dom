@@ -54,6 +54,21 @@ describe('Rendering', function () {
         makeDOMDriver(123);
       }, /Given container is not a DOM element neither a selector string/);
     });
+
+    it('should accept function as error callback', function () {
+      let element = document.createDocumentFragment();
+      let onError = function() {};
+      assert.doesNotThrow(function () {
+        makeDOMDriver(element, {onError});
+      });
+    });
+
+    it('should not accept number as error callback', function () {
+      let element = document.createDocumentFragment();
+      assert.throws(function () {
+        makeDOMDriver(element, {onError: 42});
+      });
+    });
   });
 
   describe('DOM Driver', function () {
@@ -62,6 +77,24 @@ describe('Rendering', function () {
       assert.throws(function () {
         domDriver({});
       }, /The DOM driver function expects as input an Observable of virtual/);
+    });
+
+    it('should pass errors to error callback', function (done) {
+      let error = new Error();
+      let errorCallback = function(e) {
+        assert.strictEqual(e, error);
+        done();
+      };
+
+      function app() {
+        return {
+          DOM: Rx.Observable.throw(error)
+        };
+      }
+
+      let {sinks, sources} = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget(), {onError: errorCallback})
+      });
     });
 
     it('should have Observable `:root` in DOM source', function (done) {
@@ -159,7 +192,6 @@ describe('Rendering', function () {
       };
       ConstantlyThunk.prototype.type = 'Thunk';
       ConstantlyThunk.prototype.render = function(previous) {
-        debugger;
         if (previous && previous.vnode) {
           return previous.vnode;
         } else {
@@ -401,150 +433,6 @@ describe('Rendering', function () {
         });
     });
 
-    describe('isolateSource', function () {
-      it('should have the same effect as DOM.select()', function (done) {
-        function app() {
-          return {
-            DOM: Rx.Observable.just(
-              h3('.top-most', [
-                h2('.bar', 'Wrong'),
-                div('.cycle-scope-foo', [
-                  h4('.bar', 'Correct')
-                ])
-              ])
-            )
-          };
-        }
-        let {sinks, sources} = Cycle.run(app, {
-          DOM: makeDOMDriver(createRenderTarget())
-        });
-        let isolatedDOMSource = sources.DOM.isolateSource(sources.DOM, 'foo');
-        // Make assertions
-        isolatedDOMSource.select('.bar').events('click').subscribe(ev => {
-          assert.strictEqual(ev.type, 'click');
-          assert.strictEqual(ev.target.textContent, 'Correct');
-          sources.dispose();
-          done();
-        });
-        sources.DOM.select(':root').observable.skip(1).take(1)
-          .subscribe(function (root) {
-            let wrongElement = root.querySelector('.bar');
-            let correctElement = root.querySelector('.cycle-scope-foo .bar');
-            assert.notStrictEqual(wrongElement, null);
-            assert.notStrictEqual(correctElement, null);
-            assert.notStrictEqual(typeof wrongElement, 'undefined');
-            assert.notStrictEqual(typeof correctElement, 'undefined');
-            assert.strictEqual(wrongElement.tagName, 'H2');
-            assert.strictEqual(correctElement.tagName, 'H4');
-            assert.doesNotThrow(function () {
-              wrongElement.click();
-              setTimeout(() => correctElement.click(), 5);
-            });
-            done();
-          });
-      });
-
-      it('should return source also with isolateSource and isolateSink', function (done) {
-        function app() {
-          return {
-            DOM: Rx.Observable.just(h('h3.top-most'))
-          };
-        }
-        let {sinks, sources} = Cycle.run(app, {
-          DOM: makeDOMDriver(createRenderTarget())
-        });
-        let isolatedDOMSource = sources.DOM.isolateSource(sources.DOM, 'top-most');
-        // Make assertions
-        assert.strictEqual(typeof isolatedDOMSource.isolateSource, 'function');
-        assert.strictEqual(typeof isolatedDOMSource.isolateSink, 'function');
-        sources.dispose();
-        done();
-      });
-    });
-
-    describe('isolateSink', function () {
-      it('should add a className to the vtree sink', function (done) {
-        function app(sources) {
-          let vtree$ = Rx.Observable.just(h3('.top-most'));
-          return {
-            DOM: sources.DOM.isolateSink(vtree$, 'foo'),
-          };
-        }
-        let {sinks, sources} = Cycle.run(app, {
-          DOM: makeDOMDriver(createRenderTarget())
-        });
-        // Make assertions
-        sources.DOM.select(':root').observable.skip(1).take(1)
-          .subscribe(function (root) {
-            let element = root.querySelector('.top-most');
-            assert.notStrictEqual(element, null);
-            assert.notStrictEqual(typeof element, 'undefined');
-            assert.strictEqual(element.tagName, 'H3');
-            assert.strictEqual(element.className, 'top-most cycle-scope-foo');
-            sources.dispose();
-            done();
-          });
-      });
-
-      it('should prevent parent from DOM.selecting() inside the isolation', function (done) {
-        function app(sources) {
-          return {
-            DOM: Rx.Observable.just(
-              h3('.top-most', [
-                sources.DOM.isolateSink(Rx.Observable.just(
-                  div('.foo', [
-                    h4('.bar', 'Wrong')
-                  ])
-                ), 'ISOLATION'),
-                h2('.bar', 'Correct'),
-              ])
-            )
-          };
-        }
-        let {sinks, sources} = Cycle.run(app, {
-          DOM: makeDOMDriver(createRenderTarget())
-        });
-        sources.DOM.select('.bar').observable.skip(1).take(1).subscribe(function (elements) {
-          assert.strictEqual(Array.isArray(elements), true);
-          assert.strictEqual(elements.length, 1);
-          const correctElement = elements[0];
-          assert.notStrictEqual(correctElement, null);
-          assert.notStrictEqual(typeof correctElement, 'undefined');
-          assert.strictEqual(correctElement.tagName, 'H2');
-          assert.strictEqual(correctElement.textContent, 'Correct');
-          done();
-        });
-      });
-
-      it('should allow parent to DOM.select() an isolation boundary', function (done) {
-        function app(sources) {
-          return {
-            DOM: Rx.Observable.just(
-              h3('.top-most', [
-                sources.DOM.isolateSink(Rx.Observable.just(
-                  span('.foo', [
-                    h4('.foo', 'Wrong')
-                  ])
-                ), 'ISOLATION')
-              ])
-            )
-          };
-        }
-        let {sinks, sources} = Cycle.run(app, {
-          DOM: makeDOMDriver(createRenderTarget())
-        });
-        sources.DOM.select('.foo').observable.skip(1).take(1).subscribe(function (elements) {
-          assert.strictEqual(Array.isArray(elements), true);
-          assert.strictEqual(elements.length, 1);
-          const correctElement = elements[0];
-          assert.notStrictEqual(correctElement, null);
-          assert.notStrictEqual(typeof correctElement, 'undefined');
-          assert.strictEqual(correctElement.tagName, 'SPAN');
-          done();
-        });
-      });
-    });
-
     it('should catch interaction events using id in DOM.select', function (done) {
       function app() {
         return {
@@ -660,7 +548,7 @@ describe('Rendering', function () {
           ]);
 
           return {
-            DOM: Rx.Observable.just(h('div', svgTriangle))
+            DOM: Rx.Observable.just(svgTriangle)
           };
         }
 
@@ -826,6 +714,33 @@ describe('Rendering', function () {
       });
     });
 
+    it('should render a SVG VTree with a child Observable<VTree>', function (done) {
+      function app() {
+        let child$ = Rx.Observable.just(
+          svg('g', {
+            attributes: {'class': 'child'}
+          })
+        ).delay(80);
+        return {
+          DOM: Rx.Observable.just(svg('svg', [
+            svg('g'),
+            child$
+          ]))
+        };
+      }
+      let {sinks, sources} = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+      sources.DOM.select(':root').observable.skip(1).take(1).subscribe(function (root) {
+        let selectEl = root.querySelector('.child');
+        assert.notStrictEqual(selectEl, null);
+        assert.notStrictEqual(typeof selectEl, 'undefined');
+        assert.strictEqual(selectEl.tagName, 'g');
+        sources.dispose();
+        done();
+      });
+    });
+
     it('should not work after has been disposed', function (done) {
       let number$ = Rx.Observable.range(1, 3)
         .concatMap(x => Rx.Observable.just(x).delay(50));
@@ -853,6 +768,44 @@ describe('Rendering', function () {
           }, 100);
         }
       });
+    });
+
+    it('should only be concerned with values from the most recent nested Observable', function (done) {
+      function app() {
+        return {
+          DOM: Rx.Observable.just(
+            div(
+              Rx.Observable
+                .just(2)
+                .startWith(1)
+                .map((outer) =>
+                  Rx.Observable.just(2)
+                  .delay(0)
+                  .startWith(1)
+                  .map((inner) => div('.target', outer+'/'+inner))
+                )
+            )
+          )
+        };
+      };
+
+      let {sinks, sources} = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+
+      const expected = Rx.Observable
+        .from(['1/1','2/1','2/2'])
+
+      sources.DOM.select('.target').observable
+        .skip(1)
+        .map((els) => els[0].innerHTML)
+        .sequenceEqual(expected)
+        .subscribe((areSame) => {
+          assert.strictEqual(areSame, true);
+          sources.dispose();
+          sinks.dispose();
+          done();
+        });
     });
   });
 });
