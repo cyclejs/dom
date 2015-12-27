@@ -110,8 +110,6 @@ function makeIsStrictlyInRootScope(rootList, namespace) {
   }
 }
 
-let stream = new Rx.Subject();
-
 function makeEventsSelector(element$, addEventToHistory) {
   return function events(eventName, useCapture = false) {
     if (typeof eventName !== `string`) {
@@ -237,10 +235,6 @@ function makeDOMDriver(container, options) {
   }
 
   domDriver.replayHistory = function (history) {
-    if (history.length === 0) {
-      return;
-    }
-
     const scheduler = new Rx.HistoricalScheduler();
 
     for (let selector in history) {
