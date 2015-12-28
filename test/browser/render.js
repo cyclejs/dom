@@ -461,6 +461,40 @@ describe('Rendering', function () {
         });
     });
 
+    it('should record events emitted by .select.events()', function (done) {
+      function app() {
+        return {
+          DOM: Rx.Observable.just(h3('.myelementclass', 'Foobar'))
+        };
+      }
+      let {sinks, sources} = Cycle.run(app, {
+        DOM: makeDOMDriver(createRenderTarget())
+      });
+
+      sources.DOM.select('.myelementclass').events('click').subscribe(ev => {
+        assert.strictEqual(ev.type, 'click');
+        assert.strictEqual(ev.target.textContent, 'Foobar');
+      });
+
+      sources.DOM.select(':root').observable.skip(1).take(1)
+        .subscribe(function (root) {
+          let myElement = root.querySelector('.myelementclass');
+
+          myElement.click();
+
+          const history = sources.DOM.history();
+
+          assert.strictEqual(history['.myelementclass']['click'].events.length, 1);
+
+          myElement.click();
+
+          assert.strictEqual(history['.myelementclass']['click'].events.length, 2);
+
+          sources.dispose();
+          done();
+        });
+    });
+
     describe('DOM.select()', function () {
       it('should be an object with observable and events()', function (done) {
         function app() {
