@@ -117,16 +117,16 @@ function makeEventsSelector(element$, addEventToHistory) {
         `string representing the event type to listen for.`)
     }
 
-    const historyApi = addEventToHistory(eventName);
+    const historyApi = addEventToHistory(eventName)
 
     element$.flatMapLatest(elements => {
       if (elements.length === 0) {
         return Rx.Observable.empty()
       }
       return fromEvent(elements, eventName, historyApi.add, useCapture)
-    }).share().subscribe(historyApi.stream);
+    }).share().subscribe(historyApi.stream)
 
-    return historyApi.stream;
+    return historyApi.stream
   }
 }
 
@@ -154,8 +154,8 @@ function makeElementSelector(rootEl$, addToHistory) {
       .filter(makeIsStrictlyInRootScope(array, namespace.concat(selector)))
     })
 
-    function additionalSelectorForHistory (otherSelector) {
-      return addToHistory(selector + ',' + otherSelector);
+    function additionalSelectorForHistory(otherSelector) {
+      return addToHistory(`${selector},${otherSelector}`)
     }
 
     return {
@@ -194,25 +194,25 @@ function makeDOMDriver(container, options) {
       `not a function. It should be a callback function to handle errors.`)
   }
 
-  let history = {};
+  let history = {}
 
-  function addHistoryEntry (selector) {
-    return function addEventToHistory (eventName) {
-      if (history[selector] === undefined) {
-        history[selector] = {};
+  function addHistoryEntry(selector) {
+    return function addEventToHistory(eventName) {
+      if (typeof history[selector] === `undefined`) {
+        history[selector] = {}
       }
 
-      if (history[selector][eventName] === undefined) {
-        history[selector][eventName] = {stream: new Rx.Subject(), events: []};
+      if (typeof history[selector][eventName] === `undefined`) {
+        history[selector][eventName] = {stream: new Rx.Subject(), events: []}
       }
 
-      const add = function (event) {
-        history[selector][eventName].events.push({event, time: new Date()});
+      function add(event) {
+        history[selector][eventName].events.push({event, time: new Date()})
       }
 
       return {
         add,
-        stream: history[selector][eventName].stream
+        stream: history[selector][eventName].stream,
       }
     }
   }
@@ -230,31 +230,43 @@ function makeDOMDriver(container, options) {
       dispose: disposable.dispose.bind(disposable),
       isolateSource,
       isolateSink,
-      history: () => history
+      history: () => history,
     }
   }
 
-  domDriver.replayHistory = function (history) {
-    const scheduler = new Rx.HistoricalScheduler();
+  function replayHistory(newHistory) {
+    const scheduler = new Rx.HistoricalScheduler()
 
-    for (let selector in history) {
-      const selectorHistory = history[selector];
+    function scheduleEvent(historicEvent, eventHistory) {
+      function replayEvent() {
+        eventHistory.stream.onNext(historicEvent.event)
+      }
 
-      for (let eventName in selectorHistory) {
-        const eventHistory = selectorHistory[eventName];
-
-        eventHistory.events.forEach(function (historicEvent) {
-          scheduler.scheduleAbsolute({}, historicEvent.time, function () {
-            eventHistory.stream.onNext(historicEvent.event);
-          });
-        });
-      };
+      scheduler.scheduleAbsolute({}, historicEvent.time, replayEvent)
     }
 
-    scheduler.start();
+    for (let selector in newHistory) {
+      if (newHistory.hasOwnProperty(selector)) {
+        const selectorHistory = newHistory[selector]
+
+        for (let eventName in selectorHistory) {
+          if (selectorHistory.hasOwnProperty(eventName)) {
+            const eventHistory = selectorHistory[eventName]
+
+            for (let historicEvent of eventHistory.events) {
+              scheduleEvent(historicEvent, eventHistory)
+            }
+          }
+        }
+      }
+    }
+
+    scheduler.start()
   }
 
-  return domDriver;
+  domDriver.replayHistory = replayHistory
+
+  return domDriver
 }
 
 module.exports = {
