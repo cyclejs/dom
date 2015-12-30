@@ -237,29 +237,19 @@ function makeDOMDriver(container, options) {
   function replayHistory(newHistory) {
     const scheduler = new Rx.HistoricalScheduler()
 
-    function scheduleEvent(historicEvent, eventHistory) {
-      function replayEvent() {
-        eventHistory.stream.onNext(historicEvent.event)
-      }
-
-      scheduler.scheduleAbsolute({}, historicEvent.time, replayEvent)
-    }
-
-    for (let selector in newHistory) {
-      if (newHistory.hasOwnProperty(selector)) {
-        const selectorHistory = newHistory[selector]
-
-        for (let eventName in selectorHistory) {
-          if (selectorHistory.hasOwnProperty(eventName)) {
-            const eventHistory = selectorHistory[eventName]
-
-            for (let historicEvent of eventHistory.events) {
-              scheduleEvent(historicEvent, eventHistory)
-            }
-          }
-        }
+    function scheduleEvent(stream) {
+      return function scheduleEventForStream(historicEvent) {
+        scheduler.scheduleAbsolute({}, historicEvent.time, () => {
+          stream.onNext(historicEvent.event)
+        })
       }
     }
+
+    Object.values(newHistory).forEach(selectorHistory => {
+      Object.values(selectorHistory).forEach(eventHistory => {
+        eventHistory.events.forEach(scheduleEvent(eventHistory.stream))
+      })
+    })
 
     scheduler.start()
   }
