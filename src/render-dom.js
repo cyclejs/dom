@@ -245,11 +245,19 @@ function makeDOMDriver(container, options) {
       }
     }
 
-    Object.values(newHistory).forEach(selectorHistory => {
-      Object.values(selectorHistory).forEach(eventHistory => {
-        eventHistory.events.forEach(scheduleEvent(eventHistory.stream))
-      })
-    })
+    for (let selector in newHistory) {
+      if (newHistory.hasOwnProperty(selector)) {
+        const selectorHistory = newHistory[selector]
+
+        for (let eventName in selectorHistory) {
+          if (selectorHistory.hasOwnProperty(eventName)) {
+            const eventHistory = selectorHistory[eventName]
+
+            eventHistory.events.forEach(scheduleEvent(eventHistory.stream))
+          }
+        }
+      }
+    }
 
     scheduler.start()
   }
