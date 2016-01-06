@@ -134,6 +134,7 @@ function mutateEventCurrentTarget(event, currentTargetElement) {
     Object.defineProperty(event, `currentTarget`, {
       value: currentTargetElement,
       configurable: true,
+      writeable: true,
     })
   } catch (err) {
     void err // noop
