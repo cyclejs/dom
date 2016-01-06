@@ -286,7 +286,7 @@ describe('DOMSource.events()', function () {
         ev.currentTarget.tagName === 'H2' && ev.currentTarget.className === 'parent';
       const ownerTargetIsParentH2 =
         ev.ownerTarget.tagName === 'H2' && ev.ownerTarget.className === 'parent';
-      assert.strictEqual(currentTargetIsParentH2 || ownerTargetIsParentH2, true);
+      assert.strictEqual(currentTargetIsParentH2 && ownerTargetIsParentH2, true);
       sources.dispose();
       done();
     });
