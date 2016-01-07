@@ -234,9 +234,7 @@ function makeDOMDriver(container, options) {
     }
   }
 
-  function replayHistory(newHistory) {
-    const scheduler = new Rx.HistoricalScheduler()
-
+  function replayHistory(scheduler, newHistory) {
     function scheduleEvent(stream) {
       return function scheduleEventForStream(historicEvent) {
         scheduler.scheduleAbsolute({}, historicEvent.time, () => {
@@ -258,8 +256,6 @@ function makeDOMDriver(container, options) {
         }
       }
     }
-
-    scheduler.start()
   }
 
   domDriver.replayHistory = replayHistory
