@@ -1,4 +1,4 @@
-let Rx = require(`rx`)
+const Rx = require(`rx`)
 let fromEvent = require(`./fromevent`)
 let VDOM = {
   h: require(`./virtual-hyperscript`),
