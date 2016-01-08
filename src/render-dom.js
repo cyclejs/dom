@@ -130,15 +130,11 @@ function maybeMutateEventPropagationAttributes(event) {
 }
 
 function mutateEventCurrentTarget(event, currentTargetElement) {
-  try {
-    Object.defineProperty(event, `currentTarget`, {
-      value: currentTargetElement,
-      configurable: true,
-      writeable: true,
-    })
-  } catch (err) {
-    void err // noop
-  }
+  Object.defineProperty(event, `currentTarget`, {
+    value: currentTargetElement,
+    configurable: true,
+    writeable: true,
+  })
   event.ownerTarget = currentTargetElement
 }
 
