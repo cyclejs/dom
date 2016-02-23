@@ -215,8 +215,8 @@ const isValidString = param => typeof param === `string` && param.length > 0
 const contains = (str, match) => str.indexOf(match) > -1
 
 const isNotTagName = param =>
-    isValidString(param) && contains(param, `.`) ||
-    contains(param, `#`) || contains(param, `:`)
+  isValidString(param) && contains(param, `.`) ||
+  contains(param, `#`) || contains(param, `:`)
 
 function sortNamespace(a, b) {
   if (isNotTagName(a) && isNotTagName(b)) {
