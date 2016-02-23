@@ -243,7 +243,6 @@ function makeFindElements(namespace) {
     if (namespace.join(``) === ``) {
       return rootElement
     }
-    const slice = Array.prototype.slice
     const scope = getScope(namespace)
     // Uses universal selector && is isolated
     if (namespace.indexOf(`*`) > -1 && scope.length > 0) {
@@ -256,14 +255,14 @@ function makeFindElements(namespace) {
       // grab all children
       const childNodes = topNode.getElementsByTagName(`*`)
       return removeDuplicates(
-        [topNode].concat(slice.call(childNodes))
+        [topNode].concat(Array.prototype.slice.call(childNodes))
       ).filter(makeIsStrictlyInRootScope(namespace))
     }
 
     return removeDuplicates(
-      slice.call(
+       Array.prototype.slice.call(
         rootElement.querySelectorAll(namespace.join(` `))
-      ).concat(slice.call(
+      ).concat(Array.prototype.slice.call(
         rootElement.querySelectorAll(namespace.join(``))
       ))
     ).filter(makeIsStrictlyInRootScope(namespace))
