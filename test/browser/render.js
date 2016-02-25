@@ -71,6 +71,24 @@ describe('DOM Rendering', function () {
     });
   });
 
+  it('should convert a simple virtual-dom <select> (general JSX plugin) to DOM element', function (done) {
+    // This is in the fixtures directory so we can build the file with a new version of babel.
+    const app = require('./fixtures/transform-jsx');
+
+    const {sinks, sources} = Cycle.run(app, {
+      DOM: makeDOMDriver(createRenderTarget())
+    });
+
+    sources.DOM.select(':root').observable.skip(1).take(1).subscribe(function (root) {
+      const selectEl = root.querySelector('.my-class');
+      assert.notStrictEqual(selectEl, null);
+      assert.notStrictEqual(typeof selectEl, 'undefined');
+      assert.strictEqual(selectEl.tagName, 'SELECT');
+      sources.dispose();
+      done();
+    });
+  });
+
   it('should allow virtual-dom Thunks in the VTree', function (done) {
     // The thunk
     const ConstantlyThunk = function ConstantlyThunk(greeting){

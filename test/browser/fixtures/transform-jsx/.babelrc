@@ -1,0 +1,9 @@
+{
+  "env": {
+    "babel6": {
+      "plugins": [
+        ["transform-jsx", { "module": "../../../../jsx" }]
+      ]
+    }
+  }
+}
