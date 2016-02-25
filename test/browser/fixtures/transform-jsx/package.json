@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "description": "Test package for building JSX fixture files.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cyclejs/cycle-dom"
+  },
+  "scripts": {
+    "build": "NODE_ENV=babel6 $(npm bin)/babel -p transform-jsx index.source.jsx -o index.js"
+  },
+  "dependencies": {
+    "babel-cli": "6.3.17",
+    "babel-plugin-transform-jsx": "1.2.1"
+  }
+}

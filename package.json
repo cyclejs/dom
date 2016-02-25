@@ -59,7 +59,7 @@
     "test-zuul": "zuul --open --no-coverage --local 4000 -- test/browser/index.js",
     "pretest-browser-perf": "browserify test/browser/perf/index.js -t babelify -o test/browser/perf/tests-bundle.js",
     "posttest-browser-perf": "rm test/browser/perf/tests-bundle.js",
-    "pretest-browser": "browserify test/browser/index.js -t babelify -o test/browser/page/tests-bundle.js",
+    "pretest-browser": "cd test/browser/fixtures/transform-jsx && npm install && npm run build && cd ../../../.. && browserify test/browser/index.js -t babelify -o test/browser/page/tests-bundle.js",
     "posttest-browser": "rm test/browser/page/tests-bundle.js",
     "test": "npm run eslint && npm run test-node && npm run test-browser",
     "test-ci": "npm run eslint && npm run test-node && zuul --no-coverage -- test/browser/index.js",
