@@ -6,6 +6,7 @@
 - [`h`](#h)
 - [`hyperscript-helpers`](#hyperscript-helpers)
 - [`hJSX`](#hJSX)
+- [`JSX`](#JSX)
 - [`svg`](#svg)
 - [`mockDOMSource`](#mockDOMSource)
 
@@ -80,6 +81,22 @@ VTrees.
 
 Note that to pass in custom attributes, e.g. data-*, you must use the
 attributes key like `<tag attributes={{'data-custom-attr': 'foo'}} />`.
+
+- - -
+
+### <a id="JSX"></a> `JSX`
+
+A JSX plugin provide the transformation of the open standard JSX with the use of Babel.
+Firstly install this [babel-plugin-transform-jsx](https://www.npmjs.com/package/babel-plugin-transform-jsx) plugin,
+in your babel configuration use the following:
+```
+{
+ "plugins": [["babel-plugin-transform-jsx", { "module": "@cycle/dom/jsx" }]]
+}
+```
+Note there is now no need to add `\/\* @jsx *\/\` at the top of the files using JSX.
+
+For more information read the documentations [here]((https://www.npmjs.com/package/babel-plugin-transform-jsx)).
 
 - - -
 
