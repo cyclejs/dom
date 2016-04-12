@@ -156,4 +156,88 @@ describe('DOMSource.select()', function () {
         done();
       });
   });
+
+  it('should allow DOM.select()ing its own root without classname or id', function(done) {
+    function app(sources) {
+      return {
+        DOM: Rx.Observable.just(
+          h3([
+            span([
+              h4('.bar', 'hello')
+            ])
+          ])
+        )
+      };
+    }
+
+    const {sinks, sources} = Cycle.run(app, {
+      DOM: makeDOMDriver(createRenderTarget())
+    });
+
+    sources.DOM.select('h3').observable.skip(1).take(1).subscribe(function (elements) {
+      assert.strictEqual(Array.isArray(elements), true);
+      assert.strictEqual(elements.length, 1);
+      const correctElement = elements[0];
+      assert.notStrictEqual(correctElement, null);
+      assert.notStrictEqual(typeof correctElement, 'undefined');
+      assert.strictEqual(correctElement.tagName, 'H3');
+      done();
+    });
+  });
+
+  it('should allow DOM.select()ing all elements with `*`', function(done) {
+    function app(sources) {
+      return {
+        DOM: Rx.Observable.just(
+          h3('.top-most', [
+            span([
+              h4('.bar', 'hello')
+            ])
+          ])
+        )
+      };
+    }
+
+    const {sinks, sources} = Cycle.run(app, {
+      DOM: makeDOMDriver(createRenderTarget())
+    });
+
+
+     sources.DOM.select('*').observable.skip(1).take(1).subscribe(function (elements) {
+      assert.strictEqual(Array.isArray(elements), true);
+      assert.strictEqual(elements.length, 3);
+      done();
+    });
+  });
+
+ it('should select() isolated element with tag + class', function (done) {
+   function app() {
+     return {
+       DOM: Rx.Observable.just(
+         h3('.top-most', [
+           h2('.bar', 'Wrong'),
+           div([
+             h4('.bar', 'Correct')
+           ])
+         ])
+       )
+     };
+   };
+
+   const {sinks, sources} = Cycle.run(app, {
+     DOM: makeDOMDriver(createRenderTarget())
+   });
+
+   // Make assertions
+   sources.DOM.select('h4.bar').observable.skip(1).take(1).subscribe(function(elements) {
+     assert.strictEqual(elements.length, 1);
+     const correctElement = elements[0];
+     assert.notStrictEqual(correctElement, null);
+     assert.notStrictEqual(typeof correctElement, 'undefined');
+     assert.strictEqual(correctElement.tagName, 'H4');
+     assert.strictEqual(correctElement.textContent, 'Correct');
+     sources.dispose();
+     done();
+   });
+ });
 });

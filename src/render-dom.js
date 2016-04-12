@@ -210,8 +210,67 @@ function makeEventsSelector(rootEl$, namespace) {
   }
 }
 
-function makeElementSelector(rootEl$) {
-  return function select(selector) {
+const isValidString = param => typeof param === `string` && param.length > 0
+
+const contains = (str, match) => str.indexOf(match) > -1
+
+const isNotTagName = param =>
+  isValidString(param) && contains(param, `.`) ||
+  contains(param, `#`) || contains(param, `:`)
+
+function sortNamespace(a, b) {
+  if (isNotTagName(a) && isNotTagName(b)) {
+    return 0
+  }
+  return isNotTagName(a) ? 1 : -1
+}
+
+function removeDuplicates(arr) {
+  const newArray = []
+  arr.forEach((element) => {
+    if (newArray.indexOf(element) === -1) {
+      newArray.push(element)
+    }
+  })
+  return newArray
+}
+
+const getScope = namespace =>
+  namespace.filter(c => c.indexOf(`.cycle-scope`) > -1)
+
+function makeFindElements(namespace) {
+  return function findElements(rootElement) {
+    if (namespace.join(``) === ``) {
+      return rootElement
+    }
+    const scope = getScope(namespace)
+    // Uses universal selector && is isolated
+    if (namespace.indexOf(`*`) > -1 && scope.length > 0) {
+      // grab top-level boundary of scope
+      const topNode = rootElement.querySelector(scope.join(` `))
+
+      if (!topNode) {
+        return []
+      }
+      // grab all children
+      const childNodes = topNode.getElementsByTagName(`*`)
+      return removeDuplicates(
+        [topNode].concat(Array.prototype.slice.call(childNodes))
+      ).filter(makeIsStrictlyInRootScope(namespace))
+    }
+
+    return removeDuplicates(
+       Array.prototype.slice.call(
+        rootElement.querySelectorAll(namespace.join(` `))
+      ).concat(Array.prototype.slice.call(
+        rootElement.querySelectorAll(namespace.join(``))
+      ))
+    ).filter(makeIsStrictlyInRootScope(namespace))
+  }
+}
+
+function makeElementSelector(rootElement$) {
+  return function elementSelector(selector) {
     if (typeof selector !== `string`) {
       throw new Error(`DOM driver's select() expects the argument to be a ` +
         `string as a CSS selector`)
@@ -221,23 +280,13 @@ function makeElementSelector(rootEl$) {
     const trimmedSelector = selector.trim()
     const childNamespace = trimmedSelector === `:root` ?
       namespace :
-      namespace.concat(trimmedSelector)
-    const element$ = rootEl$.map(rootEl => {
-      if (childNamespace.join(``) === ``) {
-        return rootEl
-      }
-      let nodeList = rootEl.querySelectorAll(childNamespace.join(` `))
-      if (nodeList.length === 0) {
-        nodeList = rootEl.querySelectorAll(childNamespace.join(``))
-      }
-      const array = Array.prototype.slice.call(nodeList)
-      return array.filter(makeIsStrictlyInRootScope(childNamespace))
-    })
+      namespace.concat(trimmedSelector).sort(sortNamespace)
+
     return {
-      observable: element$,
+      observable: rootElement$.map(makeFindElements(childNamespace)),
       namespace: childNamespace,
-      select: makeElementSelector(rootEl$),
-      events: makeEventsSelector(rootEl$, childNamespace),
+      select: makeElementSelector(rootElement$),
+      events: makeEventsSelector(rootElement$, childNamespace),
       isolateSource,
       isolateSink,
     }
