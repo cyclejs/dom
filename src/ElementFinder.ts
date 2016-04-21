@@ -1,3 +1,5 @@
+import {SCOPE_PREFIX} from './utils';
+
 interface MatchesSelector {
   (element: Element, selector: string): boolean;
 }
@@ -12,11 +14,11 @@ try {
 import {ScopeChecker} from './ScopeChecker';
 
 function getScope(namespace: Array<string>): Array<string> {
-  return namespace.filter(c => c.indexOf(`[data-cycle-isolate=`) > -1);
+  return namespace.filter(c => c.indexOf(`[data-${SCOPE_PREFIX}=`) > -1);
 }
 
 function getSelectors(namespace: Array<string>): Array<string> {
-  return namespace.filter(c => c.indexOf(`[data-cycle-isolate=`) === -1);
+  return namespace.filter(c => c.indexOf(`[data-${SCOPE_PREFIX}=`) === -1);
 }
 
 function toElArray(input: any): Array<Element> {
