@@ -5,6 +5,7 @@ import {DOMSource} from './DOMSource';
 import {VNodeWrapper} from './VNodeWrapper';
 import {domSelectorParser} from './utils';
 import defaultModules from './modules';
+import {IsolateModule} from './isolateModule';
 import {makeTransposeVNode} from './transposition';
 import RxAdapter from '@cycle/rx-adapter';
 
@@ -27,7 +28,7 @@ function domDriverInputGuard(view$: Observable<any>): void {
 }
 
 export interface DOMDriverOptions {
-  modules?: Object;
+  modules?: Array<Object>;
   onError?(msg: string): void;
   transposition?: boolean;
 }
@@ -45,7 +46,7 @@ function makeDOMDriver(container: string | Element, options?: DOMDriverOptions):
   const transposition = options.transposition || false;
   const modules = options.modules || defaultModules;
   const onError = options.onError || defaultOnErrorFn;
-  const patch = init(modules);
+  const patch = init(modules.concat(IsolateModule));
   const rootElement = domSelectorParser(container);
   const vnodeWrapper = new VNodeWrapper(rootElement);
   makeDOMDriverInputGuard(modules, onError);

@@ -35,7 +35,7 @@ export class BubblingSimulator {
     if (ev.propagationHasBeenStopped) {
       return false;
     }
-    for (let el = <Element> ev.target; el && el !== this.roof; el = el.parentElement) {
+    for (let el = <HTMLElement> ev.target; el && el !== this.roof; el = el.parentElement) {
       if (!this.scopeChecker.isStrictlyInRootScope(el)) {
         continue;
       }

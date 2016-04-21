@@ -6,24 +6,8 @@ import {ElementFinder} from './ElementFinder';
 import {fromEvent} from './fromEvent';
 import {isolateSink, isolateSource} from './isolate';
 
-function isValidString(param: any): boolean {
-  return typeof param === `string` && param.length > 0;
-}
-
-function contains(str: string, match: string): boolean {
-  return str.indexOf(match) > -1;
-}
-
-function isNotTagName(param: any): boolean {
-  return isValidString(param) &&
-    contains(param, `.`) || contains(param, `#`) || contains(param, `:`);
-}
-
-function sortNamespace(a: any, b: any): number {
-  if (isNotTagName(a) && isNotTagName(b)) {
-    return 0;
-  }
-  return isNotTagName(a) ? 1 : -1;
+function sortNamespace(a: string): number {
+  return a.indexOf(`[`) !== -1 ? 1 : -1;
 }
 
 const eventTypesThatDontBubble = [
