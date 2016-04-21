@@ -23,7 +23,7 @@ describe('isolateSource', function () {
         DOM: Rx.Observable.of(
           h3('.top-most', [
             h2('.bar', 'Wrong'),
-            div('.cycle-scope-foo', [
+            div({attrs: {'data-cycle-isolate': 'foo'}}, [
               h4('.bar', 'Correct')
             ])
           ])
@@ -75,7 +75,7 @@ describe('isolateSource', function () {
 });
 
 describe('isolateSink', function () {
-  it('should add a className to the vtree sink', function (done) {
+  it('should add a dataset to the vtree sink', function (done) {
     function app(sources) {
       const vtree$ = Rx.Observable.of(h3('.top-most'));
       return {
@@ -95,80 +95,13 @@ describe('isolateSink', function () {
         assert.notStrictEqual(element, null);
         assert.notStrictEqual(typeof element, 'undefined');
         assert.strictEqual(element.tagName, 'H3');
-        assert.strictEqual(element.className, 'top-most cycle-scope-foo');
+        assert.strictEqual(element.dataset.cycleIsolate, 'foo');
         setTimeout(() => {
           dispose();
           done();
         })
       });
     dispose = run()
-  });
-
-  it('should add a className to a vtree sink that had no className', function (done) {
-    function app(sources) {
-      const vtree$ = Rx.Observable.of(h3());
-      return {
-        DOM: sources.DOM.isolateSink(vtree$, 'foo'),
-      };
-    }
-
-    const {sinks, sources, run} = Cycle(app, {
-      DOM: makeDOMDriver(createRenderTarget())
-    });
-
-    let dispose;
-    // Make assertions
-    sources.DOM.select(':root').element$.skip(1).take(1)
-      .subscribe(function (root) {
-        const element = root.querySelector('h3');
-        assert.notStrictEqual(element, null);
-        assert.notStrictEqual(typeof element, 'undefined');
-        assert.strictEqual(element.tagName, 'H3');
-        assert.strictEqual(element.className, 'cycle-scope-foo');
-        setTimeout(() => {
-          dispose();
-          done();
-        });
-      });
-    dispose = run();
-  });
-
-  it('should not redundantly repeat the scope className', function (done) {
-    function app(sources) {
-      const vtree1$ = Rx.Observable.of(span('.tab1', 'Hi'));
-      const vtree2$ = Rx.Observable.of(span('.tab2', 'Hello'));
-      const first$ = sources.DOM.isolateSink(vtree1$, '1');
-      const second$ = sources.DOM.isolateSink(vtree2$, '2');
-      const switched$ = Rx.Observable.concat(
-        Rx.Observable.of(1).delay(50),
-        Rx.Observable.of(2).delay(50),
-        Rx.Observable.of(1).delay(50),
-        Rx.Observable.of(2).delay(50),
-        Rx.Observable.of(1).delay(50),
-        Rx.Observable.of(2).delay(50)
-      ).switchMap(i => i === 1 ? first$ : second$);
-      return {
-        DOM: switched$
-      };
-    }
-
-    const {sinks, sources, run} = Cycle(app, {
-      DOM: makeDOMDriver(createRenderTarget())
-    });
-
-    let dispose;
-    // Make assertions
-    sources.DOM.select(':root').element$.skip(5).take(1)
-      .subscribe(function (root) {
-        const element = root.querySelector('span');
-        assert.notStrictEqual(element, null);
-        assert.notStrictEqual(typeof element, 'undefined');
-        assert.strictEqual(element.tagName, 'SPAN');
-        assert.strictEqual(element.className, 'tab1 cycle-scope-1');
-        dispose();
-        done();
-      });
-    dispose = run();
   });
 });
 
@@ -422,6 +355,111 @@ describe('isolation', function () {
       assert.notStrictEqual(triangleElement, null);
       assert.notStrictEqual(typeof triangleElement, 'undefined');
       assert.strictEqual(triangleElement.tagName, 'polygon');
+      done();
+    });
+    run();
+  });
+
+  it('should allow DOM.select()ing its own root without classname or id', function(done) {
+    function app(sources) {
+      return {
+        DOM: Rx.Observable.of(
+          h3('.top-most', [
+            sources.DOM.isolateSink(Rx.Observable.of(
+              span([
+                h4('.bar', 'Wrong')
+              ])
+            ), 'ISOLATION')
+          ])
+        )
+      };
+    }
+
+    const {sinks, sources, run} = Cycle(app, {
+      DOM: makeDOMDriver(createRenderTarget(), {transposition: true})
+    });
+
+    const {isolateSource} = sources.DOM;
+
+    isolateSource(sources.DOM, 'ISOLATION')
+      .select('span').element$
+      .skip(1).take(1)
+      .subscribe(function (elements) {
+        assert.strictEqual(Array.isArray(elements), true);
+        assert.strictEqual(elements.length, 1);
+        const correctElement = elements[0];
+        assert.notStrictEqual(correctElement, null);
+        assert.notStrictEqual(typeof correctElement, 'undefined');
+        assert.strictEqual(correctElement.tagName, 'SPAN');
+        done();
+      });
+
+    run();
+  });
+
+  it('should allow DOM.select()ing all elements with `*`', function(done) {
+    function app(sources) {
+      return {
+        DOM: Rx.Observable.of(
+          h3('.top-most', [
+            sources.DOM.isolateSink(Rx.Observable.of(
+              span([
+                div([
+                  h4('.foo', 'hello'),
+                  h4('.bar', 'world')
+                ])
+              ])
+            ), 'ISOLATION')
+          ])
+        )
+      };
+    }
+
+    const {sinks, sources, run} = Cycle(app, {
+      DOM: makeDOMDriver(createRenderTarget(), {transposition: true})
+    });
+
+    const {isolateSource} = sources.DOM;
+
+    isolateSource(sources.DOM, 'ISOLATION')
+      .select('*').element$
+      .skip(1).take(1)
+      .subscribe(function (elements) {
+        assert.strictEqual(Array.isArray(elements), true);
+        assert.strictEqual(elements.length, 4);
+        done();
+      });
+
+    run();
+  });
+
+  it('should select() isolated element with tag + class', function (done) {
+    function app() {
+      return {
+        DOM: Rx.Observable.of(
+          h3('.top-most', [
+            h2('.bar', 'Wrong'),
+            div('.cycle-scope-foo', [
+              h4('.bar', 'Correct')
+            ])
+          ])
+        )
+      };
+    }
+
+    const {sinks, sources, run} = Cycle(app, {
+      DOM: makeDOMDriver(createRenderTarget())
+    });
+    const isolatedDOMSource = sources.DOM.isolateSource(sources.DOM, 'foo');
+
+    // Make assertions
+    isolatedDOMSource.select('h4.bar').element$.skip(1).take(1).subscribe(elements => {
+      assert.strictEqual(elements.length, 1);
+      const correctElement = elements[0];
+      assert.notStrictEqual(correctElement, null);
+      assert.notStrictEqual(typeof correctElement, 'undefined');
+      assert.strictEqual(correctElement.tagName, 'H4');
+      assert.strictEqual(correctElement.textContent, 'Correct');
       done();
     });
     run();

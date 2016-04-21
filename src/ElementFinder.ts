@@ -1,17 +1,24 @@
+import {SCOPE_PREFIX} from './utils';
+
+interface MatchesSelector {
+  (element: Element, selector: string): boolean;
+}
+let matchesSelector: MatchesSelector;
+declare var require: any;
+try {
+  matchesSelector = require(`matches-selector`);
+} catch (e) {
+  matchesSelector = <MatchesSelector> Function.prototype;
+}
+
 import {ScopeChecker} from './ScopeChecker';
 
 function getScope(namespace: Array<string>): Array<string> {
-  return namespace.filter(c => c.indexOf(`.cycle-scope`) > -1);
+  return namespace.filter(c => c.indexOf(`[data-${SCOPE_PREFIX}=`) > -1);
 }
 
-function removeDuplicates<T>(arr: Array<T>): Array<T> {
-  const newArray: Array<T> = [];
-  for (let i = arr.length - 1; i >= 0; i--) {
-    if (newArray.indexOf(arr[i]) === -1) {
-      newArray.push(arr[i]);
-    }
-  }
-  return newArray;
+function getSelectors(namespace: Array<string>): Array<string> {
+  return namespace.filter(c => c.indexOf(`[data-${SCOPE_PREFIX}=`) === -1);
 }
 
 function toElArray(input: any): Array<Element> {
@@ -28,20 +35,21 @@ export class ElementFinder {
       return rootElement;
     }
     const scopeChecker = new ScopeChecker(namespace);
-    const scope = getScope(namespace);
-    // Uses global selector && is isolated
-    if (namespace.indexOf(`*`) > -1 && scope.length > 0) {
-      // grab top-level boundary of scope
-      const topNode = rootElement.querySelector(scope.join(` `));
-      // grab all children
-      const childNodes = topNode.getElementsByTagName(`*`);
-      return removeDuplicates([topNode].concat(toElArray(childNodes)))
-        .filter(scopeChecker.isStrictlyInRootScope, scopeChecker);
+    const scope = getScope(namespace).join(` `);
+
+    const selector = getSelectors(namespace).join(` `);
+    let topNode = rootElement;
+    let topNodeMatches: Array<Element> = [];
+
+    if (scope.length > 0) {
+      topNode = rootElement.querySelector(scope) || rootElement;
+      if (matchesSelector(topNode, selector)) {
+        topNodeMatches.push(topNode);
+      }
     }
 
-    return removeDuplicates(
-      toElArray(rootElement.querySelectorAll(namespace.join(' ')))
-        .concat(toElArray(rootElement.querySelectorAll(namespace.join(''))))
-    ).filter(scopeChecker.isStrictlyInRootScope, scopeChecker);
+    return toElArray(topNode.querySelectorAll(selector))
+        .concat(topNodeMatches)
+        .filter(scopeChecker.isStrictlyInRootScope, scopeChecker);
   }
 }

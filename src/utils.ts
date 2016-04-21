@@ -6,7 +6,7 @@ function isElement(obj: any) {
     typeof obj.nodeName === `string`;
 }
 
-export const SCOPE_PREFIX = `cycle-scope-`;
+export const SCOPE_PREFIX = `cycle-isolate`;
 
 export function domSelectorParser(selectors: any) {
   const domElement = typeof selectors === `string` ?
