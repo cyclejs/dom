@@ -14,7 +14,6 @@ export class ScopeChecker {
   }
 
   public isStrictlyInRootScope(leaf: HTMLElement): boolean {
-    console.log(this);
     for (let el = leaf; el; el = el.parentElement) {
       const isolate = this.getIsolate(el);
       const selector = `[data-cycle-isolate="${isolate}"]`;
