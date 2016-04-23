@@ -21,3 +21,15 @@ export function domSelectorParser(selectors: any) {
   }
   return domElement;
 }
+
+export function getScope(namespace: String[]): string {
+  return  namespace
+    .filter(c => c.indexOf(SCOPE_PREFIX) > -1)
+    .slice(-1) // only need the latest, most specific, isolated boundary
+    .join(` `)
+    .trim();
+}
+
+export function getSelectors(namespace: String[]): string {
+  return namespace.filter(c => c.indexOf(SCOPE_PREFIX) === -1).join(` `);
+}
