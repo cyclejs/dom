@@ -60,14 +60,16 @@ export class DOMSource {
               private disposable?: Disposable) {
   }
 
-  get element$(): any {
+  get elements(): any {
     if (this._namespace.length === 0) {
       return this.runStreamAdapter.adapt(
         this.rootElement$,
         RxAdapter.streamSubscribe
       );
     } else {
-      const elementFinder = new ElementFinder(this._namespace, this.isolateModule);
+      const elementFinder = new ElementFinder(
+        this._namespace, this.isolateModule
+      );
       return this.runStreamAdapter.adapt(
         this.rootElement$.map(elementFinder.call, elementFinder),
         RxAdapter.streamSubscribe
@@ -88,7 +90,12 @@ export class DOMSource {
     const childNamespace = trimmedSelector === `:root` ?
       this._namespace :
       this._namespace.concat(trimmedSelector);
-    return new DOMSource(this.rootElement$, this.runStreamAdapter, childNamespace, this.isolateModule);
+    return new DOMSource(
+      this.rootElement$,
+      this.runStreamAdapter,
+      childNamespace,
+      this.isolateModule
+    );
   }
 
   events(eventType: string, options: EventsFnOptions = {}): any {
@@ -105,7 +112,9 @@ export class DOMSource {
         if (!namespace || namespace.length === 0) {
           return fromEvent(rootElement, eventType, useCapture);
         }
-        const bubblingSimulator = new BubblingSimulator(namespace, rootElement, this.isolateModule);
+        const bubblingSimulator = new BubblingSimulator(
+          namespace, rootElement, this.isolateModule
+        );
         return fromEvent(rootElement, eventType, useCapture)
           .filter(bubblingSimulator.shouldPropagate, bubblingSimulator);
       })
