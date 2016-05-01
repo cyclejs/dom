@@ -19,7 +19,7 @@
     "mvi",
     "virtual-dom"
   ],
-  "main": "lib/cycle-dom.js",
+  "main": "src/cycle-dom.js",
   "dependencies": {
     "hyperscript-helpers": "2.0.3",
     "matches-selector": "1.0.0",
