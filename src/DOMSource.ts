@@ -7,6 +7,7 @@ import {ElementFinder} from './ElementFinder';
 import {fromEvent} from './fromEvent';
 import {isolateSink, isolateSource} from './isolate';
 import {IsolateModule} from './isolateModule';
+import {getScope} from './utils';
 
 const eventTypesThatDontBubble = [
   `load`,
@@ -109,13 +110,19 @@ export class DOMSource {
       .take(2) // 1st is the given container, 2nd is the re-rendered container
       .map(rootElement => {
         const namespace = this._namespace;
+        const scope = getScope(namespace);
         if (!namespace || namespace.length === 0) {
           return fromEvent(rootElement, eventType, useCapture);
         }
         const bubblingSimulator = new BubblingSimulator(
           namespace, rootElement, this.isolateModule
         );
-        return fromEvent(rootElement, eventType, useCapture)
+
+        const topNode = scope.length === 0
+          ? rootElement
+          : this.isolateModule.getIsolatedElement(scope) || rootElement;
+
+        return fromEvent(topNode, eventType, useCapture)
           .filter(ev => bubblingSimulator.shouldPropagate(ev));
       })
       .flatten();
