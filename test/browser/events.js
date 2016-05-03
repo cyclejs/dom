@@ -333,7 +333,7 @@ describe('DOMSource.events()', function () {
       DOM: makeDOMDriver(createRenderTarget())
     });
 
-    sources.DOM.select('.parent').events('reset').subscribe(ev => {
+    sources.DOM.select('.form').events('reset').subscribe(ev => {
       assert.strictEqual(ev.type, 'reset');
       assert.strictEqual(ev.target.tagName, 'FORM');
       assert.strictEqual(ev.target.className, 'form');
