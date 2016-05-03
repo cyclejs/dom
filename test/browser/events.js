@@ -477,4 +477,33 @@ describe('DOMSource.events()', function () {
     });
     run();
   });
+
+  it('should not simulate bubbling for non-bubbling events', done => {
+    const app = () => ({
+      DOM: Rx.Observable.of(div('.parent', [
+        form('.correct', [
+          input({props: {type: 'text'}})
+        ])
+      ]))
+    });
+
+    const {sinks, sources, run} = Cycle(app, {
+      DOM: makeDOMDriver(createRenderTarget())
+    });
+
+    sources.DOM.select('.parent').events('reset').subscribe(ev => {
+      done(new Error('Should not get called'));
+    });
+
+    sources.DOM.select('.correct').events('reset').subscribe(ev => {
+      assert.strictEqual(ev.target.className, '.correct');
+      setTimeout(() => done());
+    })
+
+    sources.DOM.select(':root').elements.skip(1).take(1).subscribe(root => {
+      const form = root.querySelector('.correct')
+      setTimeout(() => form.reset());
+    });
+    run();
+  })
 });
