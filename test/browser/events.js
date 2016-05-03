@@ -479,31 +479,35 @@ describe('DOMSource.events()', function () {
   });
 
   it('should not simulate bubbling for non-bubbling events', done => {
-    const app = () => ({
-      DOM: Rx.Observable.of(div('.parent', [
-        form('.correct', [
-          input({props: {type: 'text'}})
-        ])
-      ]))
-    });
+    function app() {
+      return {
+        DOM: Rx.Observable.of(div('.parent', [
+          form('.form', [
+            input('.field', {type: 'text'})
+          ])
+        ]))
+      }
+    }
 
     const {sinks, sources, run} = Cycle(app, {
       DOM: makeDOMDriver(createRenderTarget())
     });
 
     sources.DOM.select('.parent').events('reset').subscribe(ev => {
-      done(new Error('Should not get called'));
+      done(new Error('Reset event should not bubble to parent'));
     });
 
-    sources.DOM.select('.correct').events('reset').subscribe(ev => {
-      assert.strictEqual(ev.target.className, '.correct');
-      setTimeout(() => done());
-    })
+    sources.DOM.select('.form').events('reset').delay(200).subscribe(ev => {
+      assert.strictEqual(ev.type, 'reset');
+      assert.strictEqual(ev.target.tagName, 'FORM');
+      assert.strictEqual(ev.target.className, 'form');
+      done();
+    });
 
     sources.DOM.select(':root').elements.skip(1).take(1).subscribe(root => {
-      const form = root.querySelector('.correct')
+      const form = root.querySelector('.form');
       setTimeout(() => form.reset());
     });
-    run();
+    run()
   })
 });
