@@ -73,7 +73,7 @@ elements with `div('.wrapper', [ h1('Header') ])` instead of
 
 An adapter around virtual-hyperscript `h()` to allow JSX to be used easily
 with Babel. Place the [Babel configuration comment](
-http://babeljs.io/docs/advanced/transformers/other/react/) `@jsx hJSX` at
+http://babeljs.io/docs/plugins/transform-react-jsx/) `@jsx hJSX` at
 the top of the ES6 file, make sure you import `hJSX` with
 `import {hJSX} from '@cycle/dom'`, and then you can use JSX to create
 VTrees.
