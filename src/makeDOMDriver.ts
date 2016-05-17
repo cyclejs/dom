@@ -60,7 +60,11 @@ function makeDOMDriver(container: string | Element, options?: DOMDriverOptions):
       .remember();
 
     /* tslint:disable:no-empty */
-    rootElement$.addListener({next: () => {}, error: () => {}, complete: () => {}});
+    document.addEventListener("readystatechange", () => {
+      if (document.readyState == "interactive") {
+        rootElement$.addListener({next: () => {}, error: () => {}, complete: () => {}});
+      }
+    })
     /* tslint:enable:no-empty */
 
     return new DOMSource(rootElement$, runStreamAdapter, [], isolateModule, delegators);

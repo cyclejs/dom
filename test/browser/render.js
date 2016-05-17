@@ -17,7 +17,45 @@ function createRenderTarget(id = null) {
   return element;
 }
 
+function createDelayedRenderTarget (id = null) {
+  let element = document.createElement('div');
+  element.className = 'cycletest';
+  if (id) {
+    element.id = id;
+  }
+  setTimeout(() => {
+    document.body.appendChild(element);
+  }, 400)
+  return element;
+}
+
 describe('DOM Rendering', function () {
+  it('should wait for Document to be fully loaded before returning makeDOMDriver', function (done) {
+    function app() {
+      return {
+        DOM: Rx.Observable.of(
+          div('.my-render-only-container', [
+            h2('Cycle.js framework')
+          ])
+        )
+      };
+    }
+
+    const {sinks, sources, run} = Cycle(app, {
+      DOM: makeDOMDriver(createDelayedRenderTarget())
+    });
+
+    let dispose;
+    sources.DOM.select(':root').elements.skip(1).take(1).subscribe(function (root) {
+      assert.notStrictEqual(document.readyState, 'complete');
+      setTimeout(() => {
+        dispose();
+        done();
+      });
+    });
+    dispose = run();
+  });
+
   it('should render DOM elements even when DOMSource is not utilized', function (done) {
     function main() {
       return {
