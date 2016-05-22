@@ -12,7 +12,9 @@ interface Mappable<T, R> {
 
 export function isolateSink(sink: any, scope: string): any {
   return <Mappable<VNode, VNode>>sink.map((vTree: VNode) => {
-    vTree.data.isolate = SCOPE_PREFIX + scope;
+    if (!vTree.data.isolate) {
+      vTree.data.isolate = SCOPE_PREFIX + scope;
+    }
     return vTree;
   });
 }
