@@ -97,7 +97,7 @@ describe('DOM Driver', function () {
     function app() {
       return {
         DOM: number$.map(number =>
-            h3('.target', String(number))
+          h3('.target', String(number))
         )
       };
     }
@@ -121,5 +121,45 @@ describe('DOM Driver', function () {
       }
     });
     dispose = run();
+  });
+
+  it('should clean dom up properly on disposal', function (done) {
+    const number$ = Rx.Observable.range(1, 3)
+      .concatMap(x => Rx.Observable.of(x).delay(50));
+    let hookTick = 0
+    function app() {
+      var hookInterval
+      var hook = {
+        insert: () => {
+          hookInterval = setInterval(() => hookTick++, 1)
+        },
+        destroy: () => {
+          clearInterval(hookInterval)
+        }
+      }
+      return {
+        DOM: Rx.Observable.of(
+          h3('.target', {hook: hook}, 'DOM')
+        )
+      };
+    }
+
+    const {sinks, sources, run} = Cycle(app, {
+      DOM: makeDOMDriver(createRenderTarget('disposal'))
+    });
+
+    const dispose = run();
+    setTimeout(() => {
+      dispose()
+      const hookTickOnDisposal = hookTick
+      setTimeout(() => {
+        let renderTarget = document.getElementById('disposal')
+        assert.equal(renderTarget.innerHTML, '');
+        assert.ok(hookTick > 0);
+        assert.equal(hookTickOnDisposal, hookTick);
+        done();
+      }, 50)
+
+    }, 100);
   });
 });
