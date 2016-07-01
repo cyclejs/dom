@@ -8,13 +8,13 @@ function isGenericStream(x: any): boolean {
 }
 
 function mutateStreamWithNS(vNode: VNode): VNode {
-  addNS(vNode.data, vNode.children);
+  addNS(vNode.data, vNode.children, vNode.sel);
   return vNode;
 }
 
-function addNS(data: Object, children: Array<VNode | string | Stream<VNode>>, selector?: string): void {
+function addNS(data: Object, children: Array<VNode | string | Stream<VNode>>, selector: string): void {
   (<any> data).ns = `http://www.w3.org/2000/svg`;
-  if (selector !== 'foreignObject' && typeof children !== `undefined` && is.array(children)) {
+  if (selector !== `foreignObject` && typeof children !== `undefined` && is.array(children)) {
     for (let i = 0; i < children.length; ++i) {
       if (isGenericStream(children[i])) {
         children[i] = (<Stream<VNode>> children[i]).map(mutateStreamWithNS);
@@ -55,7 +55,7 @@ export function h(sel: string, b?: any, c?: any): VNode {
     }
   }
   if (sel[0] === 's' && sel[1] === 'v' && sel[2] === 'g') {
-    addNS(data, children);
+    addNS(data, children, sel);
   }
   return vnode(sel, data, children, text, undefined);
 };
